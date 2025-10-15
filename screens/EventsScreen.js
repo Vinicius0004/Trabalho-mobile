@@ -751,7 +751,8 @@ export default function EventsScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#f8f9fa'
+    backgroundColor: '#f8f9fa',
+    paddingTop: 20
   },
   header: {
     backgroundColor: '#ff6b6b',
@@ -765,11 +766,12 @@ const styles = StyleSheet.create({
     elevation: 8
   },
   scrollView: { 
-    flex: 1, 
+    
     padding: 20
   },
   scrollContent: {
-    paddingBottom: 100, // Espaço para o FAB
+    paddingBottom: 100,
+    flexGrow: 1 
   },
   title: { 
     fontSize: 32, 
