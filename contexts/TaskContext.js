@@ -40,10 +40,11 @@ export function TaskProvider({ children }) {
   };
 
   const deleteTask = async (taskId) => {
-    const newTasks = tasks.filter(task => task.id !== taskId);
-    setTasks(newTasks);
-    await saveTasks(newTasks);
+    const newTasks = tasks.filter(task => task.id.toString() !== taskId.toString());
+    setTasks(newTasks); // Atualiza UI imediatamente
+    await saveTasks(newTasks); // Salva no AsyncStorage
   };
+
 
   return (
     <TaskContext.Provider value={{ 
