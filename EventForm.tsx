@@ -4,7 +4,6 @@ import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 
-// Configurar dayjs para usar português brasileiro
 dayjs.locale('pt-br');
 
 const EventForm = () => {
@@ -37,7 +36,6 @@ const EventForm = () => {
             capacity: Number(capacity),
         };
         Alert.alert('Evento salvo!', JSON.stringify(event, null, 2));
-        // ...salvar o evento...
     };
 
     return (

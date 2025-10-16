@@ -1,8 +1,5 @@
-// Design System - Agenda Inteligente
-// Sistema de design consistente para todo o aplicativo
 
 export const colors = {
-  // Cores primárias (Material Design 3.0)
   primary: '#667eea',
   primaryLight: '#8b9bff',
   primaryDark: '#4c63d2',
@@ -10,7 +7,6 @@ export const colors = {
   onPrimary: '#ffffff',
   onPrimaryContainer: '#1a1c2e',
   
-  // Cores secundárias
   secondary: '#764ba2',
   secondaryLight: '#9c7bb8',
   secondaryDark: '#5a3a7a',
@@ -18,22 +14,18 @@ export const colors = {
   onSecondary: '#ffffff',
   onSecondaryContainer: '#2d1b3d',
   
-  // Cores de fundo
   background: '#f8f9fa',
   backgroundLight: '#ffffff',
   backgroundDark: '#2c3e50',
   
-  // Cores de superfície
   surface: '#ffffff',
   surfaceVariant: '#f5f5f5',
-  
-  // Cores de texto
+
   textPrimary: '#2c3e50',
   textSecondary: '#718096',
   textLight: '#a0aec0',
   textWhite: '#ffffff',
   
-  // Cores de status (Material Design 3.0)
   success: '#4caf50',
   successLight: '#81c784',
   successContainer: '#e8f5e8',
@@ -58,7 +50,6 @@ export const colors = {
   onInfo: '#ffffff',
   onInfoContainer: '#0d47a1',
   
-  // Cores de categoria
   categoryPersonal: '#4caf50',
   categoryWork: '#2196f3',
   categoryStudy: '#ff9800',
@@ -66,7 +57,6 @@ export const colors = {
   categoryHealth: '#e91e63',
   categoryOther: '#607d8b',
   
-  // Cores neutras (Material Design 3.0)
   neutral: '#757575',
   neutralLight: '#9e9e9e',
   neutralDark: '#424242',
@@ -74,12 +64,10 @@ export const colors = {
   onNeutral: '#ffffff',
   onNeutralContainer: '#212121',
   
-  // Cores de prioridade
   priorityHigh: '#f44336',
   priorityMedium: '#ff9800',
   priorityLow: '#4caf50',
   
-  // Cores de transparência
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayLight: 'rgba(0, 0, 0, 0.3)',
   glass: 'rgba(255, 255, 255, 0.1)',
@@ -87,7 +75,6 @@ export const colors = {
 };
 
 export const typography = {
-  // Tamanhos de fonte
   fontSize: {
     xs: 12,
     sm: 14,
@@ -101,7 +88,6 @@ export const typography = {
     '6xl': 48,
   },
   
-  // Pesos de fonte
   fontWeight: {
     light: '300',
     normal: '400',
@@ -110,15 +96,12 @@ export const typography = {
     bold: '700',
     extrabold: '800',
   },
-  
-  // Alturas de linha
   lineHeight: {
     tight: 1.25,
     normal: 1.5,
     relaxed: 1.75,
   },
   
-  // Espaçamento de letras
   letterSpacing: {
     tight: -0.5,
     normal: 0,
@@ -128,7 +111,6 @@ export const typography = {
 };
 
 export const spacing = {
-  // Espaçamentos baseados em múltiplos de 4
   xs: 4,
   sm: 8,
   md: 12,
@@ -155,7 +137,6 @@ export const borderRadius = {
 };
 
 export const shadows = {
-  // Sombras para Android (elevation) e iOS (shadow) - Material Design 3.0
   none: {
     elevation: 0,
     shadowColor: 'transparent',
@@ -201,7 +182,6 @@ export const shadows = {
 };
 
 export const layout = {
-  // Breakpoints (para responsividade futura)
   breakpoints: {
     sm: 576,
     md: 768,
@@ -209,19 +189,14 @@ export const layout = {
     xl: 1200,
   },
   
-  // Larguras de container
+
   containerMaxWidth: '100%',
-  
-  // Padding padrão
   containerPadding: 20,
-  
-  // Alturas padrão
   headerHeight: 60,
   tabBarHeight: 80,
 };
 
 export const components = {
-  // Estilos padrão para componentes
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
@@ -258,7 +233,6 @@ export const components = {
   },
 };
 
-// Função utilitária para criar gradientes
 export const gradients = {
   primary: ['#667eea', '#764ba2'],
   success: ['#4caf50', '#45a049'],
@@ -267,16 +241,13 @@ export const gradients = {
   info: ['#2196f3', '#1976d2'],
 };
 
-// Animações e transições
 export const animations = {
-  // Durações padrão
   duration: {
     fast: 150,
     normal: 300,
     slow: 500,
   },
-  
-  // Easing functions
+
   easing: {
     standard: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
     decelerate: 'cubic-bezier(0.0, 0.0, 0.2, 1)',
@@ -284,7 +255,6 @@ export const animations = {
     sharp: 'cubic-bezier(0.4, 0.0, 0.6, 1)',
   },
   
-  // Transições padrão
   transitions: {
     fast: {
       duration: 150,
@@ -301,7 +271,6 @@ export const animations = {
   },
 };
 
-// Função utilitária para criar estilos de texto
 export const textStyles = {
   h1: {
     fontSize: typography.fontSize['4xl'],
@@ -348,9 +317,7 @@ export const textStyles = {
   },
 };
 
-// Utilitários para cores dinâmicas
 export const colorUtils = {
-  // Criar variações de opacidade
   withOpacity: (color, opacity) => {
     const hex = color.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
@@ -358,8 +325,7 @@ export const colorUtils = {
     const b = parseInt(hex.substr(4, 2), 16);
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   },
-  
-  // Escurecer cor
+
   darken: (color, amount) => {
     const hex = color.replace('#', '');
     const r = Math.max(0, parseInt(hex.substr(0, 2), 16) - amount);
@@ -368,7 +334,6 @@ export const colorUtils = {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   },
   
-  // Clarear cor
   lighten: (color, amount) => {
     const hex = color.replace('#', '');
     const r = Math.min(255, parseInt(hex.substr(0, 2), 16) + amount);

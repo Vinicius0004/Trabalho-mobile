@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Card, Title, Paragraph, Button } from 'react-native-paper';
-// import Icon from 'react-native-vector-icons/MaterialIcons';
 
 export default function HomeScreen({ navigation }) {
   const menuItems = [
@@ -33,7 +32,6 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

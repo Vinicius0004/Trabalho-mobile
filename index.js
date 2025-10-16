@@ -5,14 +5,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Button, View, Text } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 
-// Context Providers
 import { EventProvider } from './EventContext';
 import { ContactProvider } from './contexts/ContactContext';
 import { TaskProvider } from './contexts/TaskContext';
 import { ReminderProvider } from './contexts/ReminderContext';
 import { NoteProvider } from './contexts/NoteContext';
 
-// Screens
 import HomeScreen from './screens/HomeScreen';
 import EventsScreen from './screens/EventsScreen';
 import ContactsScreen from './screens/ContactsScreen';

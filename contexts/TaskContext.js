@@ -1,27 +1,44 @@
-import React, { createContext, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useEffect } from 'react';
+import storage from '../utils/storage';
 
 export const TaskContext = createContext();
 
 export function TaskProvider({ children }) {
   const [tasks, setTasks] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const loadTasks = async () => {
     try {
-      const storedTasks = await AsyncStorage.getItem('tasks');
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks));
+      console.log('🔄 Carregando tarefas do Storage...');
+      const storedTasks = await storage.getItem('tasks');
+      console.log('📦 Dados recuperados:', storedTasks);
+      
+      if (storedTasks && storedTasks !== 'null' && storedTasks !== '[]') {
+        const parsedTasks = JSON.parse(storedTasks);
+        console.log('✅ Tarefas carregadas:', parsedTasks.length, 'itens');
+        setTasks(parsedTasks);
+      } else {
+        console.log('ℹ️ Nenhuma tarefa salva encontrada');
+        setTasks([]);
       }
+      setIsLoaded(true);
     } catch (error) {
-      console.error('Erro ao carregar tarefas:', error);
+      console.error('❌ Erro ao carregar tarefas:', error);
+      setIsLoaded(true);
     }
   };
 
   const saveTasks = async (newTasks) => {
     try {
-      await AsyncStorage.setItem('tasks', JSON.stringify(newTasks));
+      console.log('💾 Salvando tarefas:', newTasks.length, 'itens');
+      const success = await storage.setItem('tasks', JSON.stringify(newTasks));
+      if (success) {
+        console.log('✅ Tarefas salvas com sucesso!');
+      } else {
+        console.log('⚠️ Falha ao salvar tarefas');
+      }
     } catch (error) {
-      console.error('Erro ao salvar tarefas:', error);
+      console.error('❌ Erro ao salvar tarefas:', error);
     }
   };
 
@@ -40,10 +57,17 @@ export function TaskProvider({ children }) {
   };
 
   const deleteTask = async (taskId) => {
+    console.log('🗑️ Excluindo tarefa:', taskId);
     const newTasks = tasks.filter(task => task.id !== taskId);
+    console.log('📝 Novas tarefas após exclusão:', newTasks.length, 'itens');
     setTasks(newTasks);
     await saveTasks(newTasks);
   };
+
+  useEffect(() => {
+    console.log('🚀 TaskContext montado - iniciando carregamento...');
+    loadTasks();
+  }, []);
 
   return (
     <TaskContext.Provider value={{ 

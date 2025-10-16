@@ -24,8 +24,6 @@ export default function NotesScreen() {
   const [isPinned, setIsPinned] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { notes, addNote, updateNote, deleteNote, loadNotes } = useContext(NoteContext);
-
-  // Configurar scroll labels
   const sections = [
     { label: '📝 Notas', position: 0 },
     { label: '📌 Fixadas', position: 200 },
@@ -44,10 +42,6 @@ export default function NotesScreen() {
       color: 'azul',
     }
   });
-
-  useEffect(() => {
-    loadNotes();
-  }, []);
 
   const onSubmit = async (data) => {
     try {
@@ -167,7 +161,6 @@ export default function NotesScreen() {
         onScroll={handleScroll}
       >
         <Text style={styles.title}>Notas</Text>
-        
         <Searchbar
           placeholder="Buscar notas..."
           onChangeText={setSearchQuery}
@@ -299,7 +292,6 @@ export default function NotesScreen() {
           </>
         )}
       </ScrollView>
-
       <FAB
         style={styles.fab}
         icon="plus"
@@ -311,7 +303,6 @@ export default function NotesScreen() {
           setModalVisible(true);
         }}
       />
-
       <Portal>
         <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={styles.modal}>
           <ScrollView>
@@ -352,7 +343,6 @@ export default function NotesScreen() {
               )}
             />
             {errors.content && <Text style={styles.errorText}>{errors.content.message}</Text>}
-
             <Text style={styles.label}>Categoria:</Text>
             <Controller
               control={control}
@@ -371,7 +361,6 @@ export default function NotesScreen() {
                 </Picker>
               )}
             />
-
             <Controller
               control={control}
               name="tags"
@@ -387,7 +376,6 @@ export default function NotesScreen() {
                 />
               )}
             />
-
             <Text style={styles.label}>Cor:</Text>
             <Controller
               control={control}
@@ -450,7 +438,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
   scrollContent: {
-    paddingBottom: spacing['6xl'], // Espaço para o FAB
+    paddingBottom: spacing['6xl'],
     flexGrow: 1,
   },
   title: {

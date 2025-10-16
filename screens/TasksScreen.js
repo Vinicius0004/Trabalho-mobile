@@ -13,7 +13,6 @@ import { TaskContext } from '../contexts/TaskContext';
 import ScrollLabel from '../components/ScrollLabel';
 import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
 
-// Configurar dayjs para usar português brasileiro
 dayjs.locale('pt-br');
 
 const schema = yup.object().shape({
@@ -31,7 +30,6 @@ export default function TasksScreen() {
   const [isCompleted, setIsCompleted] = useState(false);
   const { tasks, addTask, updateTask, deleteTask, loadTasks } = useContext(TaskContext);
 
-  // Configurar scroll labels
   const sections = [
     { label: '✅ Tarefas', position: 0 },
     { label: '📝 Pendentes', position: 200 },
@@ -50,10 +48,6 @@ export default function TasksScreen() {
       estimatedHours: 1,
     }
   });
-
-  useEffect(() => {
-    loadTasks();
-  }, []);
 
   const onSubmit = async (data) => {
     try {
@@ -421,7 +415,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   scrollContent: {
-    paddingBottom: spacing['6xl'], // Espaço para o FAB
+    paddingBottom: spacing['6xl'],
     flexGrow: 1,
   },
   title: {

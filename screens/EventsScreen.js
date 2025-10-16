@@ -1,4 +1,4 @@
-// ...existing code...
+
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB } from 'react-native-paper';
@@ -15,9 +15,7 @@ import { MaskedTextInput } from 'react-native-mask-text';
 import { EventContext } from '../EventContext';
 import { colors, typography, spacing, borderRadius, shadows } from '../styles/designSystem';
 
-// Configurar dayjs para usar português brasileiro
 dayjs.locale('pt-br');
-// ...existing code...
 
 const schema = yup.object().shape({
   name: yup.string().required('Nome do evento é obrigatório').min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -35,12 +33,8 @@ export default function EventsScreen() {
   const [weather, setWeather] = useState('');
   const [isImportant, setIsImportant] = useState(false);
   const { events, addEvent, updateEvent, deleteEvent, loadEvents } = useContext(EventContext);
-  
-  // Estados para funcionalidades de hora
   const [reminderMinutes, setReminderMinutes] = useState(15);
   const [showReminderPicker, setShowReminderPicker] = useState(false);
-  
-  // Estados para exclusão em lote
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [timePresets, setTimePresets] = useState([
@@ -61,19 +55,9 @@ export default function EventsScreen() {
       priority: 'media',
     }
   });
-
-  // Carrega eventos ao montar
-  useEffect(() => {
-    loadEvents();
-    getWeather(date);
-  }, []);
-
-  // Atualiza clima ao mudar data
   useEffect(() => {
     getWeather(date);
   }, [date]);
-
-  // Filtra eventos do dia selecionado
   const filteredEvents = useMemo(() => {
     return events.filter(ev =>
       moment(ev.date, 'YYYY-MM-DD').isSame(moment(date), 'day')
@@ -135,7 +119,6 @@ export default function EventsScreen() {
       } else {
         addEvent(eventData);
       }
-
       setModalVisible(false);
       reset();
       setEditingEvent(null);
@@ -157,8 +140,6 @@ export default function EventsScreen() {
     setValue('priority', event.priority);
     setIsImportant(event.isImportant || false);
     setReminderMinutes(event.reminderMinutes || 15);
-    
-    // Combinar data e hora para selectedDateTime
     const eventDate = moment(event.date, 'YYYY-MM-DD');
     const eventTime = moment(event.time, 'HH:mm');
     const combinedDateTime = eventDate.set({
@@ -198,8 +179,6 @@ export default function EventsScreen() {
       ]
     );
   };
-
-  // Funções para exclusão em lote
   const toggleEventSelection = (eventId) => {
     setSelectedEvents(prev => 
       prev.includes(eventId) 
@@ -258,12 +237,8 @@ export default function EventsScreen() {
       default: return '#757575';
     }
   };
-
-  // Função para aplicar preset de horário
   const applyTimePreset = (presetValue) => {
     setValue('time', presetValue);
-    
-    // Atualizar também o selectedDateTime
     const [hours, minutes] = presetValue.split(':');
     const newDateTime = dayjs(selectedDateTime)
       .hour(parseInt(hours))
@@ -271,20 +246,14 @@ export default function EventsScreen() {
       .toDate();
     setSelectedDateTime(newDateTime);
   };
-
-  // Atualizar hora quando selectedDateTime mudar
   useEffect(() => {
     if (modalVisible) {
       const timeString = dayjs(selectedDateTime).format('HH:mm');
       setValue('time', timeString);
     }
   }, [selectedDateTime, modalVisible]);
-
-  // Função para atualizar selectedDateTime quando hora manual for alterada
   const handleManualTimeChange = (timeText) => {
     setValue('time', timeText);
-    
-    // Validar formato HH:mm
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
     if (timeRegex.test(timeText)) {
       const [hours, minutes] = timeText.split(':');
@@ -438,7 +407,6 @@ export default function EventsScreen() {
             </View>
           </View>
         </View>
-
         {filteredEvents.length > 0 ? (
           <View style={styles.eventsSection}>
             <View style={styles.eventsSectionHeader}>
@@ -571,8 +539,6 @@ export default function EventsScreen() {
         >
           <ScrollView style={styles.modalContent}>
             <Text style={styles.modalTitle}>{editingEvent ? 'Editar Evento' : 'Novo Evento'}</Text>
-
-            {/* Nome */}
             <Controller
               control={control}
               name="name"
@@ -592,8 +558,6 @@ export default function EventsScreen() {
               )}
             />
             {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
-
-            {/* Descrição */}
             <Controller
               control={control}
               name="description"
@@ -615,8 +579,6 @@ export default function EventsScreen() {
               )}
             />
             {errors.description && <Text style={styles.errorText}>{errors.description.message}</Text>}
-
-            {/* Local */}
             <Controller
               control={control}
               name="location"
@@ -636,8 +598,6 @@ export default function EventsScreen() {
               )}
             />
             {errors.location && <Text style={styles.errorText}>{errors.location.message}</Text>}
-
-            {/* Data e Hora do Evento */}
             <View style={styles.dateTimeContainer}>
               <Text style={styles.fieldLabel}>📅 Data e Hora do Evento</Text>
               <Text style={styles.selectedDateTimeText}>
@@ -683,8 +643,6 @@ export default function EventsScreen() {
                 height={320}
                 displayFullDays={true}
               />
-
-              {/* Input Manual de Hora */}
               <View style={styles.manualTimeInputContainer}>
                 <Text style={styles.manualTimeLabel}> Digite a hora manualmente:</Text>
                 <Controller
@@ -718,8 +676,6 @@ export default function EventsScreen() {
                 </Text>
               </View>
             </View>
-
-            {/* Presets de Horário */}
             <View style={styles.timePresetsContainer}>
               <Text style={styles.timePresetsTitle}>⏰ Horários Rápidos</Text>
               <View style={styles.timePresetsGrid}>
@@ -736,9 +692,6 @@ export default function EventsScreen() {
                 ))}
               </View>
             </View>
-
-
-            {/* Lembrete */}
             <View style={styles.reminderContainer}>
               <Text style={styles.fieldLabel}>🔔 Lembrete</Text>
               <View style={styles.reminderRow}>
@@ -755,8 +708,6 @@ export default function EventsScreen() {
                 </Button>
               </View>
             </View>
-
-            {/* Prioridade */}
             <Controller
               control={control}
               name="priority"
@@ -781,8 +732,6 @@ export default function EventsScreen() {
               )}
             />
             {errors.priority && <Text style={styles.errorText}>{errors.priority.message}</Text>}
-
-            {/* Evento importante */}
             <View style={styles.switchContainer}>
               <Switch 
                 value={isImportant} 
@@ -795,7 +744,7 @@ export default function EventsScreen() {
             </View>
             {isImportant && (
               <Text style={styles.importantNoteText}>
-                ⭐ Este evento será marcado como importante e destacado na lista
+                Este evento será marcado como importante
               </Text>
             )}
 
@@ -823,8 +772,6 @@ export default function EventsScreen() {
           </ScrollView>
         </Modal>
       </Portal>
-
-      {/* Modal de Seleção de Lembrete */}
       <Portal>
         <Modal 
           visible={showReminderPicker} 
@@ -1430,7 +1377,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'white'
   },
-  // Estilos para presets de horário
+
   timePresetsContainer: {
     marginVertical: 20,
     padding: 18,
@@ -1459,7 +1406,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'white'
   },
-  // Estilos para lembretes
+
   reminderContainer: {
     marginVertical: 18,
     padding: 18,
@@ -1485,7 +1432,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'white'
   },
-  // Estilos para modal de lembretes
+ 
   reminderModal: {
     backgroundColor: 'white',
     margin: 20,
@@ -1535,4 +1482,3 @@ const styles = StyleSheet.create({
     borderRadius: 16
   }
 });
-// ...existing code...

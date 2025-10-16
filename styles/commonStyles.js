@@ -1,18 +1,12 @@
-// Estilos Comuns Reutilizáveis
-// Para manter consistência visual em todo o app
 
 import { colors, typography, spacing, borderRadius, shadows, animations, colorUtils } from './designSystem';
 
-// Estilos para botões (reutilizável em todas as telas)
 export const buttonStyles = {
-  // Card Actions Container
   cardActions: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
-
-  // Botões de Card (Material Design 3.0)
   editButton: {
     flex: 1,
     backgroundColor: colors.primary,
@@ -35,7 +29,6 @@ export const buttonStyles = {
     transform: [{ scale: 1 }],
   },
 
-  // Botões de Modal (Material Design 3.0)
   saveButton: {
     flex: 1,
     backgroundColor: colors.success,
@@ -74,7 +67,6 @@ export const buttonStyles = {
   },
 };
 
-// Estilos para cards (Material Design 3.0)
 export const cardStyles = {
   card: {
     marginBottom: spacing.lg,
@@ -117,7 +109,6 @@ export const cardStyles = {
   },
 };
 
-// Estilos para títulos
 export const titleStyles = {
   screenTitle: {
     fontSize: typography.fontSize['3xl'],
@@ -148,7 +139,6 @@ export const titleStyles = {
   },
 };
 
-// Estilos para inputs (Material Design 3.0)
 export const inputStyles = {
   input: {
     marginBottom: spacing.md,
@@ -210,7 +200,6 @@ export const inputStyles = {
   },
 };
 
-// Estilos para FAB
 export const fabStyles = {
   fab: {
     position: 'absolute',
@@ -223,7 +212,6 @@ export const fabStyles = {
   },
 };
 
-// Estilos para layout
 export const layoutStyles = {
   container: {
     flex: 1,
@@ -241,7 +229,6 @@ export const layoutStyles = {
   },
 };
 
-// Estilos para badges/chips
 export const badgeStyles = {
   badge: {
     paddingHorizontal: spacing.sm,
@@ -259,7 +246,6 @@ export const badgeStyles = {
   },
 };
 
-// Estilos para modal
 export const modalStyles = {
   modal: {
     backgroundColor: colors.surface,
@@ -271,7 +257,6 @@ export const modalStyles = {
   },
 };
 
-// Estilos para badges e chips modernos
 export const chipStyles = {
   chip: {
     paddingHorizontal: spacing.md,
@@ -311,7 +296,6 @@ export const chipStyles = {
   },
 };
 
-// Estilos para loading e estados
 export const stateStyles = {
   loading: {
     flex: 1,
@@ -349,7 +333,6 @@ export const stateStyles = {
   },
 };
 
-// Estilos para navegação
 export const navigationStyles = {
   header: {
     backgroundColor: colors.primary,

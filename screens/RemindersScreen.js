@@ -14,7 +14,6 @@ import { ReminderContext } from '../contexts/ReminderContext';
 import ScrollLabel from '../components/ScrollLabel';
 import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
 
-// Configurar dayjs para usar português brasileiro
 dayjs.locale('pt-br');
 
 const schema = yup.object().shape({
@@ -31,8 +30,6 @@ export default function RemindersScreen() {
   const [date, setDate] = useState(new Date());
   const [isActive, setIsActive] = useState(true);
   const { reminders, addReminder, updateReminder, deleteReminder, loadReminders } = useContext(ReminderContext);
-
-  // Configurar scroll labels
   const sections = [
     { label: '⏰ Lembretes', position: 0 },
     { label: '🔔 Ativos', position: 200 },
@@ -51,10 +48,6 @@ export default function RemindersScreen() {
       time: '',
     }
   });
-
-  useEffect(() => {
-    loadReminders();
-  }, []);
 
   const onSubmit = async (data) => {
     try {

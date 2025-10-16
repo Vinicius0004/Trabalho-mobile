@@ -36,8 +36,6 @@ export default function DashboardScreen() {
   const { tasks, loadTasks } = useContext(TaskContext);
   const { reminders, loadReminders } = useContext(ReminderContext);
   const { notes, loadNotes } = useContext(NoteContext);
-
-  // Configurar scroll labels
   const sections = [
     { label: '📊 Visão Geral', position: 0 },
     { label: '📈 Eventos', position: 300 },
@@ -56,13 +54,11 @@ export default function DashboardScreen() {
     loadNotes();
   }, []);
 
-  // Estatísticas gerais
+
   const totalItems = events.length + contacts.length + tasks.length + reminders.length + notes.length;
   const completedTasks = tasks.filter(task => task.isCompleted).length;
   const activeReminders = reminders.filter(reminder => reminder.isActive !== false).length;
   const pinnedNotes = notes.filter(note => note.isPinned).length;
-
-  // Dados para gráfico de linha - Eventos por mês
   const eventsPerMonth = () => {
     const months = [];
     const counts = [];
@@ -86,8 +82,7 @@ export default function DashboardScreen() {
     };
   };
 
-  // Dados para gráfico de barras - Tarefas por categoria
-  const tasksByCategory = () => {
+    const tasksByCategory = () => {
     const categories = ['pessoal', 'trabalho', 'estudos', 'casa'];
     const counts = categories.map(category => 
       tasks.filter(task => task.category === category).length
@@ -101,7 +96,7 @@ export default function DashboardScreen() {
     };
   };
 
-  // Dados para gráfico de pizza - Distribuição de prioridades
+
   const priorityDistribution = () => {
     const priorities = ['alta', 'media', 'baixa'];
     const priorityColors = [colors.priorityHigh, colors.priorityMedium, colors.priorityLow];
@@ -138,8 +133,6 @@ export default function DashboardScreen() {
         <Text style={styles.title}>📊 Dashboard</Text>
         <Text style={styles.subtitle}>Visão geral da sua agenda</Text>
       </View>
-      
-      {/* Cards de estatísticas */}
       <View style={styles.statsContainer}>
         <Card style={styles.statCard}>
           <Card.Content>
@@ -169,8 +162,6 @@ export default function DashboardScreen() {
           </Card.Content>
         </Card>
       </View>
-
-      {/* Gráfico de linha - Eventos por mês */}
       <Card style={styles.chartCard}>
         <Card.Content>
           <Title style={styles.chartTitle}>Eventos por Mês</Title>
@@ -188,8 +179,6 @@ export default function DashboardScreen() {
           )}
         </Card.Content>
       </Card>
-
-      {/* Gráfico de barras - Tarefas por categoria */}
       <Card style={styles.chartCard}>
         <Card.Content>
           <Title style={styles.chartTitle}>Tarefas por Categoria</Title>
@@ -207,8 +196,6 @@ export default function DashboardScreen() {
           )}
         </Card.Content>
       </Card>
-
-      {/* Gráfico de pizza - Distribuição de prioridades */}
       <Card style={styles.chartCard}>
         <Card.Content>
           <Title style={styles.chartTitle}>Distribuição de Prioridades</Title>
@@ -228,8 +215,6 @@ export default function DashboardScreen() {
           )}
         </Card.Content>
       </Card>
-
-      {/* Resumo rápido */}
       <Card style={styles.summaryCard}>
         <Card.Content>
           <Title style={styles.summaryTitle}>Resumo Rápido</Title>
@@ -253,26 +238,6 @@ export default function DashboardScreen() {
           </View>
         </Card.Content>
       </Card>
-      
-      {/* Conteúdo extra para testar scroll */}
-      <View style={{ height: 200, backgroundColor: 'rgba(255,255,255,0.1)', marginTop: 20, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'white', fontSize: 18, textAlign: 'center' }}>
-          🧪 Teste de Scroll
-        </Text>
-        <Text style={{ color: 'white', fontSize: 14, textAlign: 'center', marginTop: 10 }}>
-          Se você consegue ver este texto, o scroll está funcionando!
-        </Text>
-      </View>
-      
-      <View style={{ height: 200, backgroundColor: 'rgba(255,255,255,0.1)', marginTop: 20, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'white', fontSize: 18, textAlign: 'center' }}>
-          📱 Scroll Funcionando
-        </Text>
-        <Text style={{ color: 'white', fontSize: 14, textAlign: 'center', marginTop: 10 }}>
-          Continue rolando para ver mais conteúdo!
-        </Text>
-      </View>
-      
       </ScrollView>
     </View>
   );

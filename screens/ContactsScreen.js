@@ -23,8 +23,6 @@ export default function ContactsScreen() {
   const [editingContact, setEditingContact] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const { contacts, addContact, updateContact, deleteContact, loadContacts } = useContext(ContactContext);
-
-  // Configurar scroll labels
   const sections = [
     { label: '👥 Contatos', position: 0 },
     { label: '⭐ Favoritos', position: 200 },
@@ -43,10 +41,6 @@ export default function ContactsScreen() {
       category: 'pessoal',
     }
   });
-
-  useEffect(() => {
-    loadContacts();
-  }, []);
 
   const onSubmit = async (data) => {
     try {

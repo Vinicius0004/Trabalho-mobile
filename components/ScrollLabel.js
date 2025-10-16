@@ -10,8 +10,6 @@ export default function ScrollLabel({ sections, scrollY }) {
 
   const handleScroll = useCallback((event) => {
     const scrollPosition = event.nativeEvent.contentOffset.y;
-    
-    // Determinar seção atual baseada na posição do scroll
     let newSection = sections[0]?.label || '';
     
     for (let i = sections.length - 1; i >= 0; i--) {
@@ -24,7 +22,7 @@ export default function ScrollLabel({ sections, scrollY }) {
     if (newSection !== currentSection) {
       setCurrentSection(newSection);
       
-      // Animação melhorada com easing
+    
       Animated.sequence([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -32,7 +30,7 @@ export default function ScrollLabel({ sections, scrollY }) {
           easing: animations.easing.decelerate,
           useNativeDriver: true,
         }),
-        Animated.delay(2000), // Mostrar por mais tempo
+        Animated.delay(2000), 
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: animations.duration.normal,
@@ -41,8 +39,6 @@ export default function ScrollLabel({ sections, scrollY }) {
         }),
       ]).start();
     }
-    
-    // Callback opcional
     if (scrollY) {
       scrollY(scrollPosition);
     }
