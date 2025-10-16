@@ -7,6 +7,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import moment from 'moment';
 import { NoteContext } from '../contexts/NoteContext';
+import ScrollLabel from '../components/ScrollLabel';
+import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
 
 const schema = yup.object().shape({
   title: yup.string().required('Título é obrigatório').min(3, 'Título deve ter pelo menos 3 caracteres'),
@@ -22,6 +24,15 @@ export default function NotesScreen() {
   const [isPinned, setIsPinned] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { notes, addNote, updateNote, deleteNote, loadNotes } = useContext(NoteContext);
+
+  // Configurar scroll labels
+  const sections = [
+    { label: '📝 Notas', position: 0 },
+    { label: '📌 Fixadas', position: 200 },
+    { label: '📄 Todas', position: 400 },
+  ];
+
+  const { handleScroll, Label } = ScrollLabel({ sections });
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -108,12 +119,12 @@ export default function NotesScreen() {
 
   const getColorValue = (color) => {
     switch (color) {
-      case 'azul': return '#2196F3';
-      case 'verde': return '#4CAF50';
-      case 'amarelo': return '#FFC107';
-      case 'rosa': return '#E91E63';
-      case 'roxo': return '#9C27B0';
-      default: return '#757575';
+      case 'azul': return colors.categoryWork;
+      case 'verde': return colors.categoryPersonal;
+      case 'amarelo': return colors.warning;
+      case 'rosa': return colors.error;
+      case 'roxo': return colors.categoryOther;
+      default: return colors.textLight;
     }
   };
 
@@ -139,11 +150,21 @@ export default function NotesScreen() {
 
   return (
     <View style={styles.container}>
+      <Label />
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
-        indicatorStyle="white"
+        indicatorStyle="dark"
         contentContainerStyle={styles.scrollContent}
+        bounces={true}
+        alwaysBounceVertical={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        removeClippedSubviews={false}
+        overScrollMode="always"
+        scrollIndicatorInsets={{ right: 1 }}
+        onScroll={handleScroll}
       >
         <Text style={styles.title}>Notas</Text>
         
@@ -151,20 +172,28 @@ export default function NotesScreen() {
           placeholder="Buscar notas..."
           onChangeText={setSearchQuery}
           value={searchQuery}
+          textColor="#000000"
           style={styles.searchbar}
+          inputStyle={styles.searchbarText}
         />
 
         {pinnedNotes.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>📌 Fixadas</Text>
             {pinnedNotes.map((note) => (
-              <Card key={note.id} style={[styles.noteCard, { borderLeftColor: getColorValue(note.color), borderLeftWidth: 4 }]}>
-                <Card.Content>
+              <Card key={note.id} style={[styles.noteCard, { borderLeftColor: getColorValue(note.color), borderLeftWidth: 6 }]}>
+                <Card.Content style={styles.cardContentContainer}>
                   <View style={styles.noteHeader}>
                     <Title style={styles.noteTitle}>
                       {getCategoryIcon(note.category)} {note.title}
                     </Title>
-                    <Button onPress={() => togglePinNote(note)} compact>
+                    <Button 
+                      mode="text"
+                      onPress={() => togglePinNote(note)} 
+                      compact
+                      style={styles.pinButton}
+                      labelStyle={styles.pinButtonLabel}
+                    >
                       📌
                     </Button>
                   </View>
@@ -184,9 +213,25 @@ export default function NotesScreen() {
                     Atualizada: {moment(note.updatedAt).format('DD/MM/YYYY HH:mm')}
                   </Text>
                 </Card.Content>
-                <Card.Actions>
-                  <Button onPress={() => handleEdit(note)}>Editar</Button>
-                  <Button onPress={() => handleDelete(note.id)} textColor="#f44336">Excluir</Button>
+                <Card.Actions style={styles.cardActions}>
+                  <Button 
+                    mode="contained"
+                    onPress={() => handleEdit(note)} 
+                    style={styles.editButton}
+                    icon="pencil"
+                    labelStyle={styles.buttonLabel}
+                  >
+                    Editar
+                  </Button>
+                  <Button 
+                    mode="contained"
+                    onPress={() => handleDelete(note.id)} 
+                    style={styles.deleteButton}
+                    icon="delete"
+                    labelStyle={styles.buttonLabel}
+                  >
+                    Excluir
+                  </Button>
                 </Card.Actions>
               </Card>
             ))}
@@ -197,13 +242,19 @@ export default function NotesScreen() {
           <>
             <Text style={styles.sectionTitle}>📝 Todas as Notas</Text>
             {regularNotes.map((note) => (
-              <Card key={note.id} style={[styles.noteCard, { borderLeftColor: getColorValue(note.color), borderLeftWidth: 4 }]}>
-                <Card.Content>
+              <Card key={note.id} style={[styles.noteCard, { borderLeftColor: getColorValue(note.color), borderLeftWidth: 6 }]}>
+                <Card.Content style={styles.cardContentContainer}>
                   <View style={styles.noteHeader}>
                     <Title style={styles.noteTitle}>
                       {getCategoryIcon(note.category)} {note.title}
                     </Title>
-                    <Button onPress={() => togglePinNote(note)} compact>
+                    <Button 
+                      mode="text"
+                      onPress={() => togglePinNote(note)} 
+                      compact
+                      style={styles.pinButton}
+                      labelStyle={styles.pinButtonLabel}
+                    >
                       📌
                     </Button>
                   </View>
@@ -223,9 +274,25 @@ export default function NotesScreen() {
                     Atualizada: {moment(note.updatedAt).format('DD/MM/YYYY HH:mm')}
                   </Text>
                 </Card.Content>
-                <Card.Actions>
-                  <Button onPress={() => handleEdit(note)}>Editar</Button>
-                  <Button onPress={() => handleDelete(note.id)} textColor="#f44336">Excluir</Button>
+                <Card.Actions style={styles.cardActions}>
+                  <Button 
+                    mode="contained"
+                    onPress={() => handleEdit(note)} 
+                    style={styles.editButton}
+                    icon="pencil"
+                    labelStyle={styles.buttonLabel}
+                  >
+                    Editar
+                  </Button>
+                  <Button 
+                    mode="contained"
+                    onPress={() => handleDelete(note.id)} 
+                    style={styles.deleteButton}
+                    icon="delete"
+                    labelStyle={styles.buttonLabel}
+                  >
+                    Excluir
+                  </Button>
                 </Card.Actions>
               </Card>
             ))}
@@ -257,6 +324,7 @@ export default function NotesScreen() {
                 <TextInput
                   label="Título da nota"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.title}
@@ -273,6 +341,7 @@ export default function NotesScreen() {
                 <TextInput
                   label="Conteúdo"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.content}
@@ -310,6 +379,7 @@ export default function NotesScreen() {
                 <TextInput
                   label="Tags (separadas por vírgula)"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   placeholder="ex: importante, urgente, projeto"
@@ -343,10 +413,22 @@ export default function NotesScreen() {
             </View>
 
             <View style={styles.modalButtons}>
-              <Button mode="outlined" onPress={() => setModalVisible(false)} style={styles.button}>
+              <Button 
+                mode="contained" 
+                onPress={() => setModalVisible(false)} 
+                style={styles.cancelButton}
+                icon="close"
+                labelStyle={styles.buttonLabel}
+              >
                 Cancelar
               </Button>
-              <Button mode="contained" onPress={handleSubmit(onSubmit)} style={styles.button}>
+              <Button 
+                mode="contained" 
+                onPress={handleSubmit(onSubmit)} 
+                style={styles.saveButton}
+                icon="check"
+                labelStyle={styles.buttonLabel}
+              >
                 {editingNote ? 'Atualizar' : 'Salvar'}
               </Button>
             </View>
@@ -360,109 +442,245 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
   },
   scrollContent: {
-    paddingBottom: 100, // Espaço para o FAB
+    paddingBottom: spacing['6xl'], // Espaço para o FAB
+    flexGrow: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    ...textStyles.h2,
+    marginBottom: spacing.xl,
     textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   searchbar: {
-    marginBottom: 20,
+    marginBottom: spacing.xl,
+    marginHorizontal: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  searchbarText: {
+    color: '#000000',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    marginTop: 10,
+    ...textStyles.h4,
+    marginBottom: spacing.lg,
+    marginTop: spacing.xl,
+    marginHorizontal: spacing.md,
+    fontWeight: typography.fontWeight.bold,
+    color: '#000000',
+    backgroundColor: '#FFFFFF',
+    padding: spacing.lg,
+    borderRadius: borderRadius.xl,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   noteCard: {
-    marginBottom: 15,
+    marginBottom: spacing.xl,
+    marginHorizontal: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+    borderWidth: 0,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  cardContentContainer: {
+    padding: spacing.lg,
   },
   noteHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.md,
   },
   noteTitle: {
     flex: 1,
+    ...textStyles.h4,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: 0,
+    marginRight: spacing.md,
+  },
+  pinButton: {
+    minWidth: 48,
+    minHeight: 48,
+    borderRadius: borderRadius.full,
+    backgroundColor: '#F0F0F0',
+    elevation: 3,
+  },
+  pinButtonLabel: {
+    fontSize: 22,
+    margin: 0,
   },
   noteContent: {
-    marginBottom: 8,
+    marginBottom: spacing.md,
+    ...textStyles.body,
+    color: '#000000',
+    lineHeight: 22,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 8,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   tag: {
-    marginRight: 5,
-    marginBottom: 5,
+    marginRight: 0,
+    marginBottom: 0,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    elevation: 2,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontWeight: typography.fontWeight.bold,
   },
   noteDate: {
-    fontSize: 12,
-    color: '#666',
+    ...textStyles.caption,
+    color: '#000000',
     fontStyle: 'italic',
+    marginTop: spacing.sm,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: spacing.lg,
     right: 0,
     bottom: 0,
+    backgroundColor: '#667eea',
+    borderRadius: borderRadius.full,
+    ...shadows.xl,
   },
   modal: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: 8,
-    maxHeight: '90%',
+    backgroundColor: '#FFFFFF',
+    padding: spacing.xl,
+    margin: spacing.lg,
+    borderRadius: borderRadius.xl,
+    maxHeight: '92%',
+    ...shadows.xl,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    ...textStyles.h3,
+    marginBottom: spacing.xl,
     textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   input: {
-    marginBottom: 10,
+    marginBottom: spacing.md,
+    backgroundColor: '#F9F9F9',
+    borderRadius: borderRadius.lg,
   },
   errorText: {
-    color: '#f44336',
-    fontSize: 12,
-    marginBottom: 10,
+    color: colors.error,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.md,
+    fontWeight: typography.fontWeight.medium,
+    marginLeft: spacing.xs,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    ...textStyles.label,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   picker: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.lg,
+    backgroundColor: '#F9F9F9',
+    color: '#000000',
   },
   switchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: '#F5F5F5',
+    borderRadius: borderRadius.lg,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
   },
-  button: {
+  cardActions: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    gap: spacing.lg,
+    backgroundColor: '#F8F8F8',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    marginTop: spacing.md,
+  },
+  editButton: {
     flex: 1,
-    marginHorizontal: 5,
+    backgroundColor: '#667eea',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#f44336',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+    shadowColor: '#f44336',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#4caf50',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+    shadowColor: '#4caf50',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#757575',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 4,
+    shadowColor: '#757575',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  buttonLabel: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 0.5,
   },
 });
 

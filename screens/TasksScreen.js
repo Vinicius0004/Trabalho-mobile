@@ -2,12 +2,19 @@ import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, Checkbox } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from 'react-native-ui-datepicker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import moment from 'moment';
 import { TaskContext } from '../contexts/TaskContext';
+import ScrollLabel from '../components/ScrollLabel';
+import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
+
+// Configurar dayjs para usar português brasileiro
+dayjs.locale('pt-br');
 
 const schema = yup.object().shape({
   title: yup.string().required('Título é obrigatório').min(3, 'Título deve ter pelo menos 3 caracteres'),
@@ -21,10 +28,17 @@ export default function TasksScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [dueDate, setDueDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-
   const { tasks, addTask, updateTask, deleteTask, loadTasks } = useContext(TaskContext);
+
+  // Configurar scroll labels
+  const sections = [
+    { label: '✅ Tarefas', position: 0 },
+    { label: '📝 Pendentes', position: 200 },
+    { label: '✔️ Concluídas', position: 400 },
+  ];
+
+  const { handleScroll, Label } = ScrollLabel({ sections });
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -52,9 +66,9 @@ export default function TasksScreen() {
       };
 
       if (editingTask) {
-        await updateTask(taskData);
+        updateTask(taskData);
       } else {
-        await addTask(taskData);
+        addTask(taskData);
       }
 
       setModalVisible(false);
@@ -64,7 +78,6 @@ export default function TasksScreen() {
       setDueDate(new Date());
     } catch (error) {
       Alert.alert('Erro', 'Erro ao salvar tarefa');
-      console.error(error);
     }
   };
 
@@ -83,21 +96,24 @@ export default function TasksScreen() {
   const handleDelete = (taskId) => {
     const task = tasks.find(t => t.id === taskId);
     const taskName = task ? task.title : 'esta tarefa';
-
+    
     Alert.alert(
       '🗑️ Confirmar Exclusão',
       `Tem certeza que deseja excluir "${taskName}"?\n\nEsta ação não pode ser desfeita.`,
       [
-        { text: '❌ Cancelar', style: 'cancel' },
-        {
-          text: '🗑️ Excluir',
-          style: 'destructive',
-          onPress: async () => {
+        { 
+          text: '❌ Cancelar', 
+          style: 'cancel' 
+        },
+        { 
+          text: '🗑️ Excluir', 
+          style: 'destructive', 
+          onPress: () => {
             try {
-              await deleteTask(taskId);
+              deleteTask(taskId);
               Alert.alert('✅ Sucesso', 'Tarefa excluída com sucesso!');
             } catch (error) {
-              Alert.alert('❌ Erro', 'Erro ao excluir tarefa.');
+              Alert.alert('❌ Erro', 'Erro ao excluir tarefa. Tente novamente.');
             }
           }
         }
@@ -105,21 +121,16 @@ export default function TasksScreen() {
     );
   };
 
-  const toggleTaskCompletion = async (task) => {
-    try {
-      await updateTask({ ...task, isCompleted: !task.isCompleted });
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível alterar o status da tarefa.');
-      console.error(error);
-    }
+  const toggleTaskCompletion = (task) => {
+    updateTask({ ...task, isCompleted: !task.isCompleted });
   };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'alta': return '#f44336';
-      case 'media': return '#ff9800';
-      case 'baixa': return '#4caf50';
-      default: return '#757575';
+      case 'alta': return colors.priorityHigh;
+      case 'media': return colors.priorityMedium;
+      case 'baixa': return colors.priorityLow;
+      default: return colors.textLight;
     }
   };
 
@@ -135,18 +146,27 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <Label />
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={true}
+        indicatorStyle="dark"
+        contentContainerStyle={styles.scrollContent}
+        bounces={true}
+        alwaysBounceVertical={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        removeClippedSubviews={false}
+        overScrollMode="always"
+        scrollIndicatorInsets={{ right: 1 }}
+        onScroll={handleScroll}
+      >
         <Text style={styles.title}>Tarefas</Text>
-
-        {tasks.length === 0 && (
-          <Text style={{ textAlign: 'center', marginTop: 20, color: '#666' }}>
-            Nenhuma tarefa registrada 😴
-          </Text>
-        )}
 
         {tasks.map((task) => (
           <Card key={task.id} style={[styles.taskCard, task.isCompleted && styles.completedCard]}>
-            <Card.Content>
+            <Card.Content style={styles.cardContent}>
               <View style={styles.taskHeader}>
                 <View style={styles.taskTitleContainer}>
                   <Checkbox
@@ -161,14 +181,49 @@ export default function TasksScreen() {
                   <Text style={styles.priorityText}>{task.priority?.toUpperCase()}</Text>
                 </View>
               </View>
-              <Paragraph style={task.isCompleted && styles.completedText}>{task.description}</Paragraph>
-              <Paragraph style={styles.taskDetail}>📅 Prazo: {moment(task.dueDate).format('DD/MM/YYYY')}</Paragraph>
-              <Paragraph style={styles.taskDetail}>⏱️ Estimativa: {task.estimatedHours}h</Paragraph>
-              <Paragraph style={styles.taskDetail}>📂 Categoria: {task.category}</Paragraph>
+              <Paragraph style={[styles.taskDescription, task.isCompleted && styles.completedText]}>
+                {task.description}
+              </Paragraph>
+              <View style={styles.taskDetailsContainer}>
+                <View style={styles.taskDetailRow}>
+                  <Text style={styles.taskDetailIcon}>📅</Text>
+                  <Paragraph style={styles.taskDetail}>
+                    Prazo: {moment(task.dueDate).format('DD/MM/YYYY')}
+                  </Paragraph>
+                </View>
+                <View style={styles.taskDetailRow}>
+                  <Text style={styles.taskDetailIcon}>⏱️</Text>
+                  <Paragraph style={styles.taskDetail}>
+                    Estimativa: {task.estimatedHours}h
+                  </Paragraph>
+                </View>
+                <View style={[styles.taskDetailRow, styles.lastDetailRow]}>
+                  <Text style={styles.taskDetailIcon}>📂</Text>
+                  <Paragraph style={styles.taskDetail}>
+                    Categoria: {task.category}
+                  </Paragraph>
+                </View>
+              </View>
             </Card.Content>
-            <Card.Actions>
-              <Button onPress={() => handleEdit(task)}>Editar</Button>
-              <Button onPress={() => handleDelete(task.id)} textColor="#f44336">Excluir</Button>
+            <Card.Actions style={styles.cardActions}>
+              <Button 
+                mode="contained"
+                onPress={() => handleEdit(task)} 
+                style={styles.editButton}
+                icon="pencil"
+                labelStyle={styles.buttonLabel}
+              >
+                Editar
+              </Button>
+              <Button 
+                mode="contained"
+                onPress={() => handleDelete(task.id)} 
+                style={styles.deleteButton}
+                icon="delete"
+                labelStyle={styles.buttonLabel}
+              >
+                Excluir
+              </Button>
             </Card.Actions>
           </Card>
         ))}
@@ -191,7 +246,7 @@ export default function TasksScreen() {
         <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text style={styles.modalTitle}>{editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}</Text>
-
+            
             <Controller
               control={control}
               name="title"
@@ -199,6 +254,7 @@ export default function TasksScreen() {
                 <TextInput
                   label="Título da tarefa"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.title}
@@ -214,7 +270,8 @@ export default function TasksScreen() {
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
                   label="Descrição"
-                  value={value}
+                  value={value} 
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.description}
@@ -231,7 +288,11 @@ export default function TasksScreen() {
               control={control}
               name="category"
               render={({ field: { onChange, value } }) => (
-                <Picker selectedValue={value} onValueChange={onChange} style={styles.picker}>
+                <Picker
+                  selectedValue={value}
+                  onValueChange={onChange}
+                  style={styles.picker}
+                >
                   <Picker.Item label="Pessoal" value="pessoal" />
                   <Picker.Item label="Trabalho" value="trabalho" />
                   <Picker.Item label="Estudos" value="estudos" />
@@ -245,7 +306,11 @@ export default function TasksScreen() {
               control={control}
               name="priority"
               render={({ field: { onChange, value } }) => (
-                <Picker selectedValue={value} onValueChange={onChange} style={styles.picker}>
+                <Picker
+                  selectedValue={value}
+                  onValueChange={onChange}
+                  style={styles.picker}
+                >
                   <Picker.Item label="Baixa" value="baixa" />
                   <Picker.Item label="Média" value="media" />
                   <Picker.Item label="Alta" value="alta" />
@@ -260,6 +325,7 @@ export default function TasksScreen() {
                 <TextInput
                   label="Horas estimadas"
                   value={value?.toString()}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={(text) => onChange(parseFloat(text) || 0)}
                   error={!!errors.estimatedHours}
@@ -270,25 +336,47 @@ export default function TasksScreen() {
             />
             {errors.estimatedHours && <Text style={styles.errorText}>{errors.estimatedHours.message}</Text>}
 
-            {/* Seção de Data com DateTimePicker */}
             <View style={styles.dateContainer}>
               <Text style={styles.label}>Data de vencimento:</Text>
-              <Button mode="outlined" onPress={() => setShowDatePicker(true)}>
-                {moment(dueDate).format('DD/MM/YYYY')}
-              </Button>
-
-              {showDatePicker && (
-                <DateTimePicker
-                  value={dueDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  minimumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios');
-                    if (selectedDate) setDueDate(selectedDate);
-                  }}
-                />
-              )}
+              <Text style={styles.selectedDate}>{dayjs(dueDate).format('DD/MM/YYYY')}</Text>
+              <DateTimePicker
+                mode="single"
+                date={dueDate}
+                onChange={(params) => {
+                  if (params.date) {
+                    setDueDate(new Date(params.date));
+                  }
+                }}
+                locale="pt-br"
+                headerButtonColor={colors.primary}
+                selectedItemColor={colors.primary}
+                calendarTextStyle={{ 
+                  color: '#000000',
+                  fontSize: 16,
+                  fontWeight: '600'
+                }}
+                headerTextStyle={{ 
+                  color: colors.primary, 
+                  fontWeight: 'bold',
+                  fontSize: 18
+                }}
+                weekDaysTextStyle={{ 
+                  color: '#000000', 
+                  fontWeight: '700',
+                  fontSize: 14
+                }}
+                monthContainerStyle={{ backgroundColor: colors.surface }}
+                todayContainerStyle={{
+                  borderWidth: 1,
+                  borderColor: colors.primary
+                }}
+                todayTextStyle={{
+                  color: colors.primary,
+                  fontWeight: 'bold'
+                }}
+                height={320}
+                displayFullDays={true}
+              />
             </View>
 
             <View style={styles.switchContainer}>
@@ -297,10 +385,22 @@ export default function TasksScreen() {
             </View>
 
             <View style={styles.modalButtons}>
-              <Button mode="outlined" onPress={() => setModalVisible(false)} style={styles.button}>
+              <Button 
+                mode="contained" 
+                onPress={() => setModalVisible(false)} 
+                style={styles.cancelButton}
+                icon="close"
+                labelStyle={styles.buttonLabel}
+              >
                 Cancelar
               </Button>
-              <Button mode="contained" onPress={handleSubmit(onSubmit)} style={styles.button}>
+              <Button 
+                mode="contained" 
+                onPress={handleSubmit(onSubmit)} 
+                style={styles.saveButton}
+                icon="check"
+                labelStyle={styles.buttonLabel}
+              >
                 {editingTask ? 'Atualizar' : 'Salvar'}
               </Button>
             </View>
@@ -312,28 +412,241 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  scrollView: { flex: 1, padding: 20 },
-  scrollContent: { paddingBottom: 100 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  taskCard: { marginBottom: 15 },
-  completedCard: { opacity: 0.7, backgroundColor: '#e8f5e8' },
-  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  taskTitleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  taskTitle: { flex: 1, marginLeft: 8 },
-  completedText: { textDecorationLine: 'line-through', color: '#666' },
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  priorityText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
-  taskDetail: { fontSize: 12, color: '#666', marginBottom: 2 },
-  fab: { position: 'absolute', margin: 16, right: 0, bottom: 0 },
-  modal: { backgroundColor: 'white', padding: 20, margin: 20, borderRadius: 8, maxHeight: '90%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  input: { marginBottom: 10 },
-  errorText: { color: '#f44336', fontSize: 12, marginBottom: 10 },
-  label: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-  picker: { borderWidth: 1, borderColor: '#ccc', marginBottom: 15 },
-  dateContainer: { marginBottom: 15 },
-  switchContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-around' },
-  button: { flex: 1, marginHorizontal: 5 },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  scrollContent: {
+    paddingBottom: spacing['6xl'], // Espaço para o FAB
+    flexGrow: 1,
+  },
+  title: {
+    ...textStyles.h2,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+  },
+  taskCard: {
+    marginBottom: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    ...shadows.md,
+  },
+  cardContent: {
+    padding: spacing.lg,
+  },
+  completedCard: {
+    opacity: 0.7,
+    backgroundColor: colors.successLight + '20',
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  taskTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  taskTitle: {
+    flex: 1,
+    marginLeft: spacing.md,
+    ...textStyles.h4,
+    color: '#000000',
+  },
+  completedText: {
+    textDecorationLine: 'line-through',
+    color: colors.textSecondary,
+  },
+  priorityBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+    minWidth: 70,
+  },
+  priorityText: {
+    color: colors.textWhite,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  taskDescription: {
+    ...textStyles.body,
+    color: '#000000',
+    marginBottom: spacing.md,
+    lineHeight: 22,
+  },
+  taskDetailsContainer: {
+    backgroundColor: colors.backgroundLight,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
+  },
+  taskDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  lastDetailRow: {
+    marginBottom: 0,
+  },
+  taskDetailIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
+  },
+  taskDetail: {
+    ...textStyles.caption,
+    color: '#000000',
+    marginBottom: 0,
+    flex: 1,
+  },
+  fab: {
+    position: 'absolute',
+    margin: spacing.lg,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.warning,
+    borderRadius: borderRadius.full,
+    ...shadows.xl,
+  },
+  modal: {
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    margin: spacing.lg,
+    borderRadius: borderRadius.xl,
+    maxHeight: '92%',
+    ...shadows.xl,
+  },
+  modalTitle: {
+    ...textStyles.h3,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+  },
+  input: {
+    marginBottom: spacing.md,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.lg,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.md,
+    fontWeight: typography.fontWeight.medium,
+    marginLeft: spacing.xs,
+  },
+  label: {
+    ...textStyles.label,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+  },
+  picker: {
+    borderWidth: 2,
+    borderColor: colors.textLight,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surfaceVariant,
+    color: '#000000',
+  },
+  dateContainer: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.lg,
+  },
+  selectedDate: {
+    fontSize: typography.fontSize.lg,
+    color: colors.primary,
+    textAlign: 'center',
+    fontWeight: typography.fontWeight.bold,
+    backgroundColor: colors.primaryLight + '30',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: borderRadius.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  cardActions: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  editButton: {
+    flex: 1,
+    backgroundColor: '#667eea',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.sm,
+    elevation: 4,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#f44336',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.sm,
+    elevation: 4,
+    shadowColor: '#f44336',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#4caf50',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+    shadowColor: '#4caf50',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#757575',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 4,
+    shadowColor: '#757575',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  buttonLabel: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 0.5,
+  },
 });
+

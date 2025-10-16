@@ -7,6 +7,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { MaskedTextInput } from 'react-native-mask-text';
 import { ContactContext } from '../contexts/ContactContext';
+import ScrollLabel from '../components/ScrollLabel';
+import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
 
 const schema = yup.object().shape({
   name: yup.string().required('Nome é obrigatório').min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -21,6 +23,15 @@ export default function ContactsScreen() {
   const [editingContact, setEditingContact] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const { contacts, addContact, updateContact, deleteContact, loadContacts } = useContext(ContactContext);
+
+  // Configurar scroll labels
+  const sections = [
+    { label: '👥 Contatos', position: 0 },
+    { label: '⭐ Favoritos', position: 200 },
+    { label: '📋 Todos', position: 400 },
+  ];
+
+  const { handleScroll, Label } = ScrollLabel({ sections });
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -101,43 +112,82 @@ export default function ContactsScreen() {
 
   const getCategoryColor = (category) => {
     switch (category) {
-      case 'trabalho': return '#2196F3';
-      case 'pessoal': return '#4CAF50';
-      case 'familia': return '#FF9800';
-      case 'outros': return '#9C27B0';
-      default: return '#757575';
+      case 'trabalho': return colors.categoryWork;
+      case 'pessoal': return colors.categoryPersonal;
+      case 'familia': return colors.categoryHealth;
+      case 'outros': return colors.categoryOther;
+      default: return colors.textLight;
     }
   };
 
   return (
     <View style={styles.container}>
+      <Label />
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
-        indicatorStyle="white"
+        indicatorStyle="dark"
         contentContainerStyle={styles.scrollContent}
+        bounces={true}
+        alwaysBounceVertical={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        removeClippedSubviews={false}
+        overScrollMode="always"
+        scrollIndicatorInsets={{ right: 1 }}
+        onScroll={handleScroll}
       >
         <Text style={styles.title}>Contatos</Text>
 
         {contacts.map((contact) => (
           <Card key={contact.id} style={styles.contactCard}>
-            <Card.Content>
+            <Card.Content style={styles.cardContent}>
               <View style={styles.contactHeader}>
-                <Title style={styles.contactTitle}>{contact.name}</Title>
+                <View style={styles.contactTitleContainer}>
+                  <Title style={styles.contactTitle}>{contact.name}</Title>
+                  {contact.isFavorite && <Text style={styles.favoriteIcon}>⭐</Text>}
+                </View>
                 <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(contact.category) }]}>
                   <Text style={styles.categoryText}>{contact.category?.toUpperCase()}</Text>
                 </View>
               </View>
-              <Paragraph>📞 {contact.phone}</Paragraph>
-              <Paragraph>📧 {contact.email}</Paragraph>
-              <Paragraph>📍 {contact.address}</Paragraph>
-              {contact.isFavorite && (
-                <Text style={styles.favoriteLabel}>⭐ Favorito</Text>
-              )}
+              <View style={styles.contactInfoContainer}>
+                <View style={styles.contactInfoRow}>
+                  <Text style={styles.contactInfoIcon}>📞</Text>
+                  <Paragraph style={styles.contactInfo}>{contact.phone}</Paragraph>
+                </View>
+                <View style={styles.contactInfoRow}>
+                  <Text style={styles.contactInfoIcon}>📧</Text>
+                  <Paragraph style={styles.contactInfo}>{contact.email}</Paragraph>
+                </View>
+                <View style={[styles.contactInfoRow, styles.lastInfoRow]}>
+                  <Text style={styles.contactInfoIcon}>📍</Text>
+                  <Paragraph style={styles.contactInfo}>{contact.address}</Paragraph>
+                </View>
+              </View>
             </Card.Content>
-            <Card.Actions>
-              <Button onPress={() => handleEdit(contact)}>Editar</Button>
-              <Button onPress={() => handleDelete(contact.id)} textColor="#f44336">Excluir</Button>
+            <Card.Actions style={styles.cardActions}>
+              <Button 
+                mode="contained"
+                onPress={() => handleEdit(contact)} 
+                style={styles.editButton}
+                icon="pencil"
+                labelStyle={styles.buttonLabel}
+                buttonColor="#5f27cd"
+              >
+                Editar
+              </Button>
+              <Button 
+                mode="contained"
+                onPress={() => handleDelete(contact.id)} 
+                style={styles.deleteButton}
+                icon="delete"
+                labelStyle={styles.buttonLabel}
+                buttonColor="#ff4757"
+              >
+                Excluir
+              </Button>
             </Card.Actions>
           </Card>
         ))}
@@ -167,6 +217,7 @@ export default function ContactsScreen() {
                 <TextInput
                   label="Nome completo"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.name}
@@ -183,6 +234,7 @@ export default function ContactsScreen() {
                 <MaskedTextInput
                   mask="(99) 99999-9999"
                   placeholder="(00) 00000-0000"
+                  placeholderTextColor="#999999"
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}
@@ -199,6 +251,7 @@ export default function ContactsScreen() {
                 <TextInput
                   label="Email"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.email}
@@ -216,6 +269,7 @@ export default function ContactsScreen() {
                 <TextInput
                   label="Endereço"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.address}
@@ -266,114 +320,212 @@ export default function ContactsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
-    padding: 20,
+    padding: spacing.lg,
   },
   scrollContent: {
-    paddingBottom: 100, // Espaço para o FAB
+    paddingBottom: spacing['6xl'],
+    flexGrow: 1,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    ...textStyles.h2,
+    marginBottom: spacing.xl,
     textAlign: 'center',
-    color: '#2c3e50',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   contactCard: {
-    marginBottom: 15,
+    marginBottom: spacing.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  cardContent: {
+    padding: spacing.lg,
   },
   contactHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.lg,
+  },
+  contactTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.md,
   },
   contactTitle: {
     flex: 1,
+    ...textStyles.h4,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+  },
+  favoriteIcon: {
+    fontSize: 20,
+    marginLeft: spacing.sm,
+  },
+  contactInfoContainer: {
+    backgroundColor: '#f8f9fb',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  contactInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  lastInfoRow: {
+    marginBottom: 0,
+  },
+  contactInfoIcon: {
+    fontSize: 18,
+    marginRight: spacing.sm,
+    width: 24,
+  },
+  contactInfo: {
+    color: '#2c3e50',
+    fontSize: typography.fontSize.base,
+    marginBottom: 0,
+    lineHeight: 24,
+    flex: 1,
+    fontWeight: typography.fontWeight.medium,
   },
   categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+    minWidth: 80,
+    alignItems: 'center',
   },
   categoryText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  favoriteLabel: {
-    color: '#ff9800',
-    fontWeight: 'bold',
-    marginTop: 8,
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: spacing.lg,
     right: 0,
     bottom: 0,
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#5f27cd',
+    borderRadius: borderRadius.full,
+    elevation: 16,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
   },
   modal: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: 12,
-    maxHeight: '90%',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.xl,
+    margin: spacing.lg,
+    borderRadius: borderRadius.xl,
+    maxHeight: '92%',
+    elevation: 12,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    ...textStyles.h3,
+    marginBottom: spacing.xl,
     textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   input: {
-    marginBottom: 10,
+    marginBottom: spacing.md,
+    backgroundColor: '#F9F9F9',
+    borderRadius: borderRadius.lg,
   },
   maskedInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    fontSize: typography.fontSize.lg,
+    marginBottom: spacing.md,
+    backgroundColor: '#F9F9F9',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
   },
   inputError: {
-    borderColor: '#f44336',
+    borderColor: '#ff4757',
+    backgroundColor: '#fff5f7',
   },
   errorText: {
-    color: '#f44336',
-    fontSize: 12,
-    marginBottom: 10,
+    color: '#ff4757',
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.md,
+    fontWeight: typography.fontWeight.medium,
+    marginLeft: spacing.xs,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    ...textStyles.label,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   radioContainer: {
-    marginBottom: 15,
+    marginBottom: spacing.lg,
+    backgroundColor: '#F5F5F5',
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
   },
   switchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: '#F5F5F5',
+    borderRadius: borderRadius.lg,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
   },
   button: {
     flex: 1,
-    marginHorizontal: 5,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+  },
+  cardActions: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  editButton: {
+    flex: 1,
+    borderRadius: 16,
+    elevation: 0,
+    paddingVertical: 4,
+  },
+  deleteButton: {
+    flex: 1,
+    borderRadius: 16,
+    elevation: 0,
+    paddingVertical: 4,
+  },
+  buttonLabel: {
+    fontWeight: '700',
+    fontSize: 15,
   },
 });
 

@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, Switch, StyleSheet, Alert, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from 'react-native-ui-datepicker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
+
+// Configurar dayjs para usar português brasileiro
+dayjs.locale('pt-br');
 
 const EventForm = () => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState('');
     const [date, setDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
     const [isOnline, setIsOnline] = useState(false);
     const [capacity, setCapacity] = useState('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -77,37 +81,48 @@ const EventForm = () => {
             />
             {errors.capacity && <Text style={styles.error}>{errors.capacity}</Text>}
             <View style={styles.datePickerContainer}>
-                <Button 
-                    title="Selecionar Data e Hora" 
-                    onPress={() => setShowDatePicker(true)}
-                    color="#6200ea"
-                />
-                <Text style={styles.dateText}>{date.toLocaleString('pt-BR')}</Text>
-            </View>
-            {showDatePicker && (
+                <Text style={styles.dateLabel}>Data e Hora do Evento:</Text>
+                <Text style={styles.dateText}>{dayjs(date).format('DD/MM/YYYY HH:mm')}</Text>
                 <DateTimePicker
-                    value={date}
-                    mode="datetime"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                        if (Platform.OS === 'android') {
-                            setShowDatePicker(false);
-                        }
-                        
-                        if (event.type === 'dismissed') {
-                            setShowDatePicker(false);
-                            return;
-                        }
-                        
-                        if (selectedDate) {
-                            setDate(selectedDate);
-                            if (Platform.OS === 'ios') {
-                                setShowDatePicker(false);
-                            }
+                    mode="single"
+                    date={date}
+                    onChange={(params) => {
+                        if (params.date) {
+                            setDate(new Date(params.date));
                         }
                     }}
+                    timePicker={true}
+                    locale="pt-br"
+                    headerButtonColor="#667eea"
+                    selectedItemColor="#667eea"
+                    calendarTextStyle={{ 
+                        color: '#000000',
+                        fontSize: 16,
+                        fontWeight: '600'
+                    }}
+                    headerTextStyle={{ 
+                        color: '#667eea', 
+                        fontWeight: 'bold',
+                        fontSize: 18
+                    }}
+                    weekDaysTextStyle={{ 
+                        color: '#000000', 
+                        fontWeight: '700',
+                        fontSize: 14
+                    }}
+                    monthContainerStyle={{ backgroundColor: '#ffffff' }}
+                    todayContainerStyle={{
+                        borderWidth: 1,
+                        borderColor: '#667eea'
+                    }}
+                    todayTextStyle={{
+                        color: '#667eea',
+                        fontWeight: 'bold'
+                    }}
+                    height={350}
+                    displayFullDays={true}
                 />
-            )}
+            </View>
             <Button title="Salvar Evento" onPress={handleSave} />
         </View>
     );
@@ -133,7 +148,8 @@ const styles = StyleSheet.create({
         color: '#f44336', 
         marginBottom: 8,
         fontSize: 12,
-        marginLeft: 4
+        marginLeft: 4,
+        fontWeight: '600'
     },
     switchContainer: { 
         flexDirection: 'row', 
@@ -150,11 +166,22 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e0e0e0'
     },
-    dateText: {
-        marginTop: 8,
+    dateLabel: {
         fontSize: 16,
-        color: '#333',
-        textAlign: 'center'
+        fontWeight: '700',
+        color: '#000000',
+        marginBottom: 8
+    },
+    dateText: {
+        marginTop: 4,
+        marginBottom: 12,
+        fontSize: 16,
+        color: '#667eea',
+        textAlign: 'center',
+        fontWeight: '700',
+        backgroundColor: '#e8f4fd',
+        padding: 10,
+        borderRadius: 8
     }
 });
 

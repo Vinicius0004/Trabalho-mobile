@@ -2,13 +2,20 @@ import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, Chip } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from 'react-native-ui-datepicker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { MaskedTextInput } from 'react-native-mask-text';
 import moment from 'moment';
 import { ReminderContext } from '../contexts/ReminderContext';
+import ScrollLabel from '../components/ScrollLabel';
+import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
+
+// Configurar dayjs para usar português brasileiro
+dayjs.locale('pt-br');
 
 const schema = yup.object().shape({
   title: yup.string().required('Título é obrigatório').min(3, 'Título deve ter pelo menos 3 caracteres'),
@@ -22,9 +29,17 @@ export default function RemindersScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingReminder, setEditingReminder] = useState(null);
   const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const { reminders, addReminder, updateReminder, deleteReminder, loadReminders } = useContext(ReminderContext);
+
+  // Configurar scroll labels
+  const sections = [
+    { label: '⏰ Lembretes', position: 0 },
+    { label: '🔔 Ativos', position: 200 },
+    { label: '📅 Agendados', position: 400 },
+  ];
+
+  const { handleScroll, Label } = ScrollLabel({ sections });
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -124,21 +139,31 @@ export default function RemindersScreen() {
 
   const getFrequencyColor = (frequency) => {
     switch (frequency) {
-      case 'diario': return '#4caf50';
-      case 'semanal': return '#2196f3';
-      case 'mensal': return '#ff9800';
-      case 'unico': return '#9c27b0';
-      default: return '#757575';
+      case 'diario': return colors.success;
+      case 'semanal': return colors.info;
+      case 'mensal': return colors.warning;
+      case 'unico': return colors.categoryOther;
+      default: return colors.textLight;
     }
   };
 
   return (
     <View style={styles.container}>
+      <Label />
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
-        indicatorStyle="white"
+        indicatorStyle="dark"
         contentContainerStyle={styles.scrollContent}
+        bounces={true}
+        alwaysBounceVertical={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        removeClippedSubviews={false}
+        overScrollMode="always"
+        scrollIndicatorInsets={{ right: 1 }}
+        onScroll={handleScroll}
       >
         <Text style={styles.title}>Lembretes</Text>
 
@@ -172,9 +197,25 @@ export default function RemindersScreen() {
                 Tipo: {reminder.type}
               </Text>
             </Card.Content>
-            <Card.Actions>
-              <Button onPress={() => handleEdit(reminder)}>Editar</Button>
-              <Button onPress={() => handleDelete(reminder.id)} textColor="#f44336">Excluir</Button>
+            <Card.Actions style={styles.cardActions}>
+              <Button 
+                mode="contained"
+                onPress={() => handleEdit(reminder)} 
+                style={styles.editButton}
+                icon="pencil"
+                labelStyle={styles.buttonLabel}
+              >
+                Editar
+              </Button>
+              <Button 
+                mode="contained"
+                onPress={() => handleDelete(reminder.id)} 
+                style={styles.deleteButton}
+                icon="delete"
+                labelStyle={styles.buttonLabel}
+              >
+                Excluir
+              </Button>
             </Card.Actions>
           </Card>
         ))}
@@ -205,6 +246,7 @@ export default function RemindersScreen() {
                 <TextInput
                   label="Título do lembrete"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.title}
@@ -221,6 +263,7 @@ export default function RemindersScreen() {
                 <TextInput
                   label="Descrição"
                   value={value}
+                  textColor="#000000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.description}
@@ -287,35 +330,46 @@ export default function RemindersScreen() {
 
             <View style={styles.dateContainer}>
               <Text style={styles.label}>Data:</Text>
-              <Button mode="outlined" onPress={() => setShowDatePicker(true)}>
-                {moment(date).format('DD/MM/YYYY')}
-              </Button>
-            </View>
-
-            {showDatePicker && (
+              <Text style={styles.selectedDate}>{dayjs(date).format('DD/MM/YYYY')}</Text>
               <DateTimePicker
-                value={date}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, selectedDate) => {
-                  if (Platform.OS === 'android') {
-                    setShowDatePicker(false);
-                  }
-                  
-                  if (event.type === 'dismissed') {
-                    setShowDatePicker(false);
-                    return;
-                  }
-                  
-                  if (selectedDate) {
-                    setDate(selectedDate);
-                    if (Platform.OS === 'ios') {
-                      setShowDatePicker(false);
-                    }
+                mode="single"
+                date={date}
+                onChange={(params) => {
+                  if (params.date) {
+                    setDate(new Date(params.date));
                   }
                 }}
+                locale="pt-br"
+                headerButtonColor={colors.primary}
+                selectedItemColor={colors.primary}
+                calendarTextStyle={{ 
+                  color: '#000000',
+                  fontSize: 16,
+                  fontWeight: '600'
+                }}
+                headerTextStyle={{ 
+                  color: colors.primary, 
+                  fontWeight: 'bold',
+                  fontSize: 18
+                }}
+                weekDaysTextStyle={{ 
+                  color: '#000000', 
+                  fontWeight: '700',
+                  fontSize: 14
+                }}
+                monthContainerStyle={{ backgroundColor: colors.surface }}
+                todayContainerStyle={{
+                  borderWidth: 1,
+                  borderColor: colors.primary
+                }}
+                todayTextStyle={{
+                  color: colors.primary,
+                  fontWeight: 'bold'
+                }}
+                height={320}
+                displayFullDays={true}
               />
-            )}
+            </View>
 
             <View style={styles.switchContainer}>
               <Text style={styles.label}>Lembrete Ativo:</Text>
@@ -323,10 +377,22 @@ export default function RemindersScreen() {
             </View>
 
             <View style={styles.modalButtons}>
-              <Button mode="outlined" onPress={() => setModalVisible(false)} style={styles.button}>
+              <Button 
+                mode="contained" 
+                onPress={() => setModalVisible(false)} 
+                style={styles.cancelButton}
+                icon="close"
+                labelStyle={styles.buttonLabel}
+              >
                 Cancelar
               </Button>
-              <Button mode="contained" onPress={handleSubmit(onSubmit)} style={styles.button}>
+              <Button 
+                mode="contained" 
+                onPress={handleSubmit(onSubmit)} 
+                style={styles.saveButton}
+                icon="check"
+                labelStyle={styles.buttonLabel}
+              >
                 {editingReminder ? 'Atualizar' : 'Salvar'}
               </Button>
             </View>
@@ -340,127 +406,219 @@ export default function RemindersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
-    padding: 20,
+    padding: spacing.lg,
   },
   scrollContent: {
-    paddingBottom: 100, // Espaço para o FAB
+    paddingBottom: spacing['6xl'],
+    flexGrow: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    ...textStyles.h2,
+    marginBottom: spacing.xl,
     textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   reminderCard: {
-    marginBottom: 15,
+    marginBottom: spacing.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+    padding: spacing.lg,
+    elevation: 8,
   },
   inactiveCard: {
     opacity: 0.6,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surfaceVariant,
   },
   reminderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.md,
   },
   reminderTitle: {
     flex: 1,
+    ...textStyles.h4,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   inactiveText: {
-    color: '#999',
+    color: '#95a5a6',
   },
   reminderDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 8,
+    marginVertical: spacing.md,
   },
   frequencyChip: {
     alignSelf: 'flex-start',
+    borderRadius: borderRadius.lg,
   },
   chipText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
   },
   reminderTime: {
-    fontSize: 12,
-    color: '#666',
+    ...textStyles.caption,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   reminderType: {
-    fontSize: 12,
-    color: '#666',
+    ...textStyles.caption,
+    color: '#2c3e50',
     fontStyle: 'italic',
+    marginTop: spacing.sm,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: spacing.lg,
     right: 0,
     bottom: 0,
+    backgroundColor: '#5f27cd',
+    borderRadius: borderRadius.full,
+    elevation: 16,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
   },
   modal: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: 8,
-    maxHeight: '90%',
+    backgroundColor: '#FFFFFF',
+    padding: spacing.xl,
+    margin: spacing.lg,
+    borderRadius: borderRadius.xl,
+    maxHeight: '92%',
+    elevation: 12,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    ...textStyles.h3,
+    marginBottom: spacing.xl,
     textAlign: 'center',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   input: {
-    marginBottom: 10,
+    marginBottom: spacing.md,
+    backgroundColor: '#F9F9F9',
+    borderRadius: borderRadius.lg,
   },
   maskedInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    fontSize: typography.fontSize.xl,
+    marginBottom: spacing.md,
+    backgroundColor: '#F9F9F9',
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
   },
   inputError: {
-    borderColor: '#f44336',
+    borderColor: '#ff4757',
+    backgroundColor: '#fff5f7',
   },
   errorText: {
-    color: '#f44336',
-    fontSize: 12,
-    marginBottom: 10,
+    color: '#ff4757',
+    fontSize: typography.fontSize.sm,
+    marginBottom: spacing.md,
+    fontWeight: typography.fontWeight.medium,
+    marginLeft: spacing.xs,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    ...textStyles.label,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    color: '#000000',
+    fontWeight: typography.fontWeight.bold,
   },
   picker: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#CCCCCC',
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.lg,
+    backgroundColor: '#F9F9F9',
+    color: '#000000',
   },
   dateContainer: {
-    marginBottom: 15,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: '#F5F5F5',
+    borderRadius: borderRadius.lg,
+  },
+  selectedDate: {
+    fontSize: typography.fontSize.lg,
+    color: colors.primary,
+    textAlign: 'center',
+    fontWeight: typography.fontWeight.bold,
+    backgroundColor: colors.primaryLight + '30',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
   },
   switchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: '#F5F5F5',
+    borderRadius: borderRadius.lg,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
   },
-  button: {
+  cardActions: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  editButton: {
     flex: 1,
-    marginHorizontal: 5,
+    borderRadius: 16,
+    elevation: 0,
+    paddingVertical: 4,
+  },
+  deleteButton: {
+    flex: 1,
+    borderRadius: 16,
+    elevation: 0,
+    paddingVertical: 4,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#00d2ff',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#757575',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 4,
+  },
+  buttonLabel: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    letterSpacing: 0.5,
   },
 });
 

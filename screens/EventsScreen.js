@@ -3,14 +3,20 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from 'react-native-ui-datepicker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import CalendarPicker from 'react-native-calendar-picker';
 import moment from 'moment';
 import axios from 'axios';
+import { MaskedTextInput } from 'react-native-mask-text';
 import { EventContext } from '../EventContext';
+import { colors, typography, spacing, borderRadius, shadows } from '../styles/designSystem';
+
+// Configurar dayjs para usar português brasileiro
+dayjs.locale('pt-br');
 // ...existing code...
 
 const schema = yup.object().shape({
@@ -25,13 +31,10 @@ export default function EventsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [date, setDate] = useState(new Date());
+  const [selectedDateTime, setSelectedDateTime] = useState(new Date());
   const [weather, setWeather] = useState('');
   const [isImportant, setIsImportant] = useState(false);
   const { events, addEvent, updateEvent, deleteEvent, loadEvents } = useContext(EventContext);
-
-  // Controle simplificado do TimePicker
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(new Date());
   
   // Estados para funcionalidades de hora
   const [reminderMinutes, setReminderMinutes] = useState(15);
@@ -137,9 +140,9 @@ export default function EventsScreen() {
       reset();
       setEditingEvent(null);
       setIsImportant(false);
-      setShowTimePicker(false);
       setShowReminderPicker(false);
       setReminderMinutes(15);
+      setSelectedDateTime(new Date());
     } catch (error) {
       Alert.alert('Erro', 'Erro ao salvar evento');
     }
@@ -154,7 +157,17 @@ export default function EventsScreen() {
     setValue('priority', event.priority);
     setIsImportant(event.isImportant || false);
     setReminderMinutes(event.reminderMinutes || 15);
-    setDate(moment(event.date, 'YYYY-MM-DD').toDate());
+    
+    // Combinar data e hora para selectedDateTime
+    const eventDate = moment(event.date, 'YYYY-MM-DD');
+    const eventTime = moment(event.time, 'HH:mm');
+    const combinedDateTime = eventDate.set({
+      hour: eventTime.hours(),
+      minute: eventTime.minutes()
+    }).toDate();
+    
+    setSelectedDateTime(combinedDateTime);
+    setDate(eventDate.toDate());
     setModalVisible(true);
   };
 
@@ -246,201 +259,284 @@ export default function EventsScreen() {
     }
   };
 
-  // Ajuste: passar data como string 'YYYY-MM-DD' para customDatesStyles
-  const customDatesStyles = events.map((ev) => ({
-    date: ev.date, // espera string no formato YYYY-MM-DD
-    containerStyle: {},
-    style: { backgroundColor: '#87cefa' },
-    textStyle: { color: 'white' },
-  }));
-
-  // Handler para mudança de hora
-  const handleTimeChange = (event, selectedTime) => {
-    // Fecha o picker no Android
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    
-    // Se o usuário cancelou
-    if (event.type === 'dismissed') {
-      setShowTimePicker(false);
-      return;
-    }
-    
-    // Se uma hora foi selecionada
-    if (selectedTime) {
-      const timeString = moment(selectedTime).format('HH:mm');
-      setValue('time', timeString);
-      setSelectedTime(selectedTime);
-      
-      // Fecha o picker no iOS após seleção
-      if (Platform.OS === 'ios') {
-        setShowTimePicker(false);
-      }
-    }
-  };
-
-  const openTimePicker = () => {
-    const currentTime = getValues('time');
-    
-    if (currentTime && currentTime !== '') {
-      // Se já existe uma hora selecionada, usa ela
-      const timeDate = moment(currentTime, 'HH:mm').toDate();
-      if (timeDate.isValid()) {
-        setSelectedTime(timeDate);
-      } else {
-        setSelectedTime(new Date());
-      }
-    } else {
-      // Se não há hora selecionada, usa a hora atual
-      setSelectedTime(new Date());
-    }
-    
-    setShowTimePicker(true);
-  };
-
-
   // Função para aplicar preset de horário
   const applyTimePreset = (presetValue) => {
     setValue('time', presetValue);
-    const timeDate = moment(presetValue, 'HH:mm').toDate();
-    setSelectedTime(timeDate);
+    
+    // Atualizar também o selectedDateTime
+    const [hours, minutes] = presetValue.split(':');
+    const newDateTime = dayjs(selectedDateTime)
+      .hour(parseInt(hours))
+      .minute(parseInt(minutes))
+      .toDate();
+    setSelectedDateTime(newDateTime);
+  };
+
+  // Atualizar hora quando selectedDateTime mudar
+  useEffect(() => {
+    if (modalVisible) {
+      const timeString = dayjs(selectedDateTime).format('HH:mm');
+      setValue('time', timeString);
+    }
+  }, [selectedDateTime, modalVisible]);
+
+  // Função para atualizar selectedDateTime quando hora manual for alterada
+  const handleManualTimeChange = (timeText) => {
+    setValue('time', timeText);
+    
+    // Validar formato HH:mm
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    if (timeRegex.test(timeText)) {
+      const [hours, minutes] = timeText.split(':');
+      const newDateTime = dayjs(selectedDateTime)
+        .hour(parseInt(hours))
+        .minute(parseInt(minutes))
+        .toDate();
+      setSelectedDateTime(newDateTime);
+    }
   };
 
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.title}>📅 Eventos</Text>
-            <Text style={styles.subtitle}>Gerencie seus compromissos</Text>
-          </View>
-          <View style={styles.headerActions}>
-            {!isSelectionMode ? (
-              <Button
-                mode="outlined"
-                onPress={() => setIsSelectionMode(true)}
-                style={styles.selectionButton}
-                icon="check-circle-outline"
-              >
-                Selecionar
-              </Button>
-            ) : (
-              <View style={styles.selectionActions}>
-                <Button
-                  mode="outlined"
-                  onPress={selectAllEvents}
-                  style={styles.selectionButton}
-                  icon="select-all"
-                >
-                  Todos
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={clearSelection}
-                  style={styles.selectionButton}
-                  icon="clear"
-                >
-                  Limpar
-                </Button>
+        <View style={styles.headerGradient}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.title}>📅 Eventos</Text>
+              <Text style={styles.subtitle}>Organize seus compromissos importantes</Text>
+            </View>
+            <View style={styles.headerActions}>
+              {!isSelectionMode ? (
                 <Button
                   mode="contained"
-                  onPress={handleBulkDelete}
-                  disabled={selectedEvents.length === 0}
-                  style={[styles.selectionButton, styles.deleteButton]}
-                  icon="delete"
+                  onPress={() => setIsSelectionMode(true)}
+                  style={styles.selectionButtonPrimary}
+                  icon="check-circle-outline"
+                  labelStyle={styles.buttonLabelWhite}
+                  buttonColor="rgba(255, 255, 255, 0.2)"
                 >
-                  Excluir ({selectedEvents.length})
+                  Selecionar
                 </Button>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setIsSelectionMode(false);
-                    setSelectedEvents([]);
-                  }}
-                  style={styles.selectionButton}
-                  icon="close"
-                >
-                  Cancelar
-                </Button>
-              </View>
-            )}
+              ) : (
+                <View style={styles.selectionActions}>
+                  <Button
+                    mode="contained"
+                    onPress={selectAllEvents}
+                    style={styles.selectionButtonSmall}
+                    icon="select-all"
+                    compact
+                    buttonColor="rgba(255, 255, 255, 0.3)"
+                  >
+                    Todos
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={clearSelection}
+                    style={styles.selectionButtonSmall}
+                    icon="close-circle"
+                    compact
+                    buttonColor="rgba(255, 255, 255, 0.3)"
+                  >
+                    Limpar
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={handleBulkDelete}
+                    disabled={selectedEvents.length === 0}
+                    style={[styles.selectionButtonSmall, styles.deleteButtonHeader]}
+                    icon="delete-sweep"
+                    compact
+                    buttonColor="#ff4757"
+                  >
+                    Excluir ({selectedEvents.length})
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={() => {
+                      setIsSelectionMode(false);
+                      setSelectedEvents([]);
+                    }}
+                    style={styles.selectionButtonSmall}
+                    icon="arrow-left"
+                    compact
+                    buttonColor="rgba(255, 255, 255, 0.3)"
+                  >
+                    Voltar
+                  </Button>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </View>
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
-        indicatorStyle="white"
+        indicatorStyle="dark"
         contentContainerStyle={styles.scrollContent}
       >
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeader}>
+            <Text style={styles.calendarTitle}>📅 Calendário</Text>
+            <View style={styles.selectedDateBadge}>
+              <Text style={styles.selectedDateBadgeText}>
+                {dayjs(date).format('DD/MM/YYYY')}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.calendarContainer}>
+            <DateTimePicker
+              mode="single"
+              date={date}
+              onChange={(params) => {
+                if (params.date) {
+                  setDate(new Date(params.date));
+                }
+              }}
+              locale="pt-br"
+              headerButtonColor="#5f27cd"
+              selectedItemColor="#5f27cd"
+              calendarTextStyle={{ 
+                color: '#2c3e50',
+                fontSize: 16,
+                fontWeight: '600'
+              }}
+              headerTextStyle={{ 
+                color: '#5f27cd', 
+                fontWeight: 'bold',
+                fontSize: 20
+              }}
+              weekDaysTextStyle={{ 
+                color: '#5f27cd', 
+                fontWeight: '700',
+                fontSize: 14
+              }}
+              monthContainerStyle={{ backgroundColor: '#ffffff' }}
+              todayContainerStyle={{
+                borderWidth: 2,
+                borderColor: '#00d2ff',
+                backgroundColor: 'rgba(0, 210, 255, 0.1)'
+              }}
+              todayTextStyle={{
+                color: '#00d2ff',
+                fontWeight: 'bold'
+              }}
+              height={340}
+              displayFullDays={true}
+            />
+          </View>
 
-        <View style={styles.calendarContainer}>
-          <CalendarPicker
-            onDateChange={(selectedDate) => setDate(selectedDate)}
-            customDatesStyles={customDatesStyles}
-            weekdays={['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']}
-            months={['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']}
-            locale="pt-br"
-          />
+          <View style={styles.weatherCard}>
+            <View style={styles.weatherIconContainer}>
+              <Text style={styles.weatherIcon}>🌤️</Text>
+            </View>
+            <View style={styles.weatherInfo}>
+              <Text style={styles.weatherLabel}>Previsão do Tempo</Text>
+              <Text style={styles.weatherText}>{weather}</Text>
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.weather}>Clima previsto: {weather}</Text>
-
-        {filteredEvents.length > 0 ? filteredEvents.map((event) => (
-          <Card key={event.id} style={[
-            styles.eventCard,
-            isSelectionMode && selectedEvents.includes(event.id) && styles.selectedEventCard
-          ]}>
-            <Card.Content style={styles.eventContent}>
-              <View style={styles.eventHeader}>
-                {isSelectionMode && (
-                  <Button
-                    mode={selectedEvents.includes(event.id) ? "contained" : "outlined"}
-                    onPress={() => toggleEventSelection(event.id)}
-                    style={styles.checkboxButton}
-                    icon={selectedEvents.includes(event.id) ? "check" : "check-box-outline-blank"}
-                  />
+        {filteredEvents.length > 0 ? (
+          <View style={styles.eventsSection}>
+            <View style={styles.eventsSectionHeader}>
+              <Text style={styles.eventsSectionTitle}>
+                {filteredEvents.length} {filteredEvents.length === 1 ? 'Evento' : 'Eventos'}
+              </Text>
+              <Text style={styles.eventsSectionSubtitle}>
+                {dayjs(date).format('dddd, DD [de] MMMM')}
+              </Text>
+            </View>
+            
+            {filteredEvents.map((event) => (
+              <Card key={event.id} style={[
+                styles.eventCard,
+                isSelectionMode && selectedEvents.includes(event.id) && styles.selectedEventCard
+              ]}>
+                <View style={[styles.eventCardAccent, { backgroundColor: getPriorityColor(event.priority) }]} />
+                
+                <Card.Content style={styles.eventContent}>
+                  <View style={styles.eventHeader}>
+                    <View style={styles.eventHeaderLeft}>
+                      {isSelectionMode && (
+                        <Button
+                          mode={selectedEvents.includes(event.id) ? "contained" : "outlined"}
+                          onPress={() => toggleEventSelection(event.id)}
+                          style={styles.checkboxButton}
+                          icon={selectedEvents.includes(event.id) ? "check-circle" : "checkbox-blank-circle-outline"}
+                          compact
+                          buttonColor={selectedEvents.includes(event.id) ? "#5f27cd" : "transparent"}
+                        />
+                      )}
+                      <View style={styles.eventTitleContainer}>
+                        <Title style={styles.eventTitle}>{event.name}</Title>
+                        {event.isImportant && <Text style={styles.importantStar}>⭐</Text>}
+                      </View>
+                    </View>
+                    <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(event.priority) }]}>
+                      <Text style={styles.priorityText}>{event.priority?.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.eventInfo}>
+                    <View style={styles.eventDateTimeRow}>
+                      <View style={styles.eventDateTimeItem}>
+                        <Text style={styles.eventDateTimeIcon}>📅</Text>
+                        <Text style={styles.eventDateTimeText}>
+                          {moment(event.date, 'YYYY-MM-DD').format('DD/MM/YYYY')}
+                        </Text>
+                      </View>
+                      <View style={styles.eventDateTimeItem}>
+                        <Text style={styles.eventDateTimeIcon}>🕐</Text>
+                        <Text style={styles.eventDateTimeText}>{event.time}</Text>
+                      </View>
+                    </View>
+                    
+                    <Text style={styles.eventDescription}>{event.description}</Text>
+                    
+                    <View style={styles.eventDetailsRow}>
+                      <View style={styles.eventDetailItem}>
+                        <Text style={styles.eventDetailIcon}>📍</Text>
+                        <Text style={styles.eventDetailText}>{event.location}</Text>
+                      </View>
+                      <View style={styles.eventDetailItem}>
+                        <Text style={styles.eventDetailIcon}>🌤️</Text>
+                        <Text style={styles.eventDetailText}>{event.weather}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </Card.Content>
+                
+                {!isSelectionMode && (
+                  <Card.Actions style={styles.eventActions}>
+                    <Button 
+                      mode="contained" 
+                      onPress={() => handleEdit(event)}
+                      style={styles.editButton}
+                      icon="pencil"
+                      labelStyle={styles.eventButtonLabel}
+                      buttonColor="#5f27cd"
+                    >
+                      Editar
+                    </Button>
+                    <Button 
+                      mode="contained" 
+                      onPress={() => handleDelete(event.id)} 
+                      style={styles.deleteEventButton}
+                      icon="delete"
+                      labelStyle={styles.eventButtonLabel}
+                      buttonColor="#ff4757"
+                    >
+                      Excluir
+                    </Button>
+                  </Card.Actions>
                 )}
-                <Title style={styles.eventTitle}>{event.name}</Title>
-                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(event.priority) }]}>
-                  <Text style={styles.priorityText}>{event.priority?.toUpperCase()}</Text>
-                </View>
-              </View>
-              <View style={styles.eventInfo}>
-                <Text style={styles.eventDate}>
-                  📅 {moment(event.date, 'YYYY-MM-DD').format('DD/MM/YYYY')} - 🕐 {event.time}
-                </Text>
-                <Text style={styles.eventDescription}>{event.description}</Text>
-                <Text style={styles.eventLocation}>📍 {event.location}</Text>
-                <Text style={styles.eventWeather}>🌤️ {event.weather}</Text>
-                {event.isImportant && <Text style={styles.importantLabel}>⭐ Evento Importante</Text>}
-              </View>
-            </Card.Content>
-            {!isSelectionMode && (
-              <Card.Actions style={styles.eventActions}>
-                <Button 
-                  mode="contained" 
-                  onPress={() => handleEdit(event)}
-                  style={styles.editButton}
-                  icon="pencil"
-                >
-                  Editar
-                </Button>
-                <Button 
-                  mode="outlined" 
-                  onPress={() => handleDelete(event.id)} 
-                  textColor="#e53e3e"
-                  style={styles.deleteButton}
-                  icon="delete"
-                >
-                  Excluir
-                </Button>
-              </Card.Actions>
-            )}
-          </Card>
-        )) : (
+              </Card>
+            ))}
+          </View>
+        ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateIcon}>📅</Text>
             <Text style={styles.emptyStateText}>Nenhum evento neste dia</Text>
@@ -457,9 +553,12 @@ export default function EventsScreen() {
           reset();
           setEditingEvent(null);
           setIsImportant(false);
+          setSelectedDateTime(new Date());
           setModalVisible(true);
         }}
         visible={!isSelectionMode}
+        color="#ffffff"
+        customSize={60}
       />
 
       <Portal>
@@ -467,7 +566,6 @@ export default function EventsScreen() {
           visible={modalVisible} 
           onDismiss={() => {
             setModalVisible(false);
-            setShowTimePicker(false);
           }} 
           contentContainerStyle={styles.modal}
         >
@@ -539,31 +637,87 @@ export default function EventsScreen() {
             />
             {errors.location && <Text style={styles.errorText}>{errors.location.message}</Text>}
 
-            {/* Hora */}
-            <Controller
-              control={control}
-              name="time"
-              render={({ field: { value } }) => (
-                <View style={styles.timeContainer}>
-                  <Text style={styles.fieldLabel}>Hora do Evento</Text>
-                  <Button 
-                    mode="outlined" 
-                    onPress={openTimePicker}
-                    style={[styles.timeButton, value && styles.timeButtonFilled]}
-                    icon="clock-outline"
-                    labelStyle={value ? styles.timeButtonLabelFilled : styles.timeButtonLabel}
-                  >
-                    {value ? `🕐 ${value}` : 'Selecionar Hora'}
-                  </Button>
-                  {value && (
-                    <Text style={styles.selectedTimeText}>
-                      ✅ Hora selecionada: {value}
-                    </Text>
+            {/* Data e Hora do Evento */}
+            <View style={styles.dateTimeContainer}>
+              <Text style={styles.fieldLabel}>📅 Data e Hora do Evento</Text>
+              <Text style={styles.selectedDateTimeText}>
+                {dayjs(selectedDateTime).format('DD/MM/YYYY')} às {dayjs(selectedDateTime).format('HH:mm')}
+              </Text>
+              
+              <DateTimePicker
+                mode="single"
+                date={selectedDateTime}
+                timePicker={true}
+                onChange={(params) => {
+                  if (params.date) {
+                    setSelectedDateTime(new Date(params.date));
+                  }
+                }}
+                locale="pt-br"
+                headerButtonColor={colors.primary}
+                selectedItemColor={colors.primary}
+                calendarTextStyle={{ 
+                  color: '#000000',
+                  fontSize: 16,
+                  fontWeight: '600'
+                }}
+                headerTextStyle={{ 
+                  color: colors.primary, 
+                  fontWeight: 'bold',
+                  fontSize: 18
+                }}
+                weekDaysTextStyle={{ 
+                  color: '#000000', 
+                  fontWeight: '700',
+                  fontSize: 14
+                }}
+                monthContainerStyle={{ backgroundColor: colors.surface }}
+                todayContainerStyle={{
+                  borderWidth: 1,
+                  borderColor: colors.primary
+                }}
+                todayTextStyle={{
+                  color: colors.primary,
+                  fontWeight: 'bold'
+                }}
+                height={320}
+                displayFullDays={true}
+              />
+
+              {/* Input Manual de Hora */}
+              <View style={styles.manualTimeInputContainer}>
+                <Text style={styles.manualTimeLabel}> Digite a hora manualmente:</Text>
+                <Controller
+                  control={control}
+                  name="time"
+                  render={({ field: { onChange, value } }) => (
+                    <View>
+                      <MaskedTextInput
+                        type="custom"
+                        options={{
+                          mask: '99:99'
+                        }}
+                        value={value}
+                        onChangeText={(text, rawText) => {
+                          handleManualTimeChange(text);
+                        }}
+                        placeholder="HH:MM"
+                        keyboardType="numeric"
+                        style={[
+                          styles.manualTimeInputNative,
+                          errors.time && styles.manualTimeInputError
+                        ]}
+                        placeholderTextColor="#a0a0a0"
+                      />
+                    </View>
                   )}
-                  {errors.time && <Text style={styles.errorText}>{errors.time.message}</Text>}
-                </View>
-              )}
-            />
+                />
+                {errors.time && <Text style={styles.errorText}>{errors.time.message}</Text>}
+                <Text style={styles.manualTimeHint}>
+                  💡 Digite a hora no formato 24h (ex: 09:00, 14:30, 18:45)
+                </Text>
+              </View>
+            </View>
 
             {/* Presets de Horário */}
             <View style={styles.timePresetsContainer}>
@@ -582,39 +736,6 @@ export default function EventsScreen() {
                 ))}
               </View>
             </View>
-
-            {/* Exibe DateTimePicker */}
-            {showTimePicker && (
-              <View style={styles.timePickerContainer}>
-                <Text style={styles.timePickerTitle}>Selecionar Hora</Text>
-                <DateTimePicker
-                  value={selectedTime}
-                  mode="time"
-                  is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleTimeChange}
-                  style={styles.timePicker}
-                />
-                {Platform.OS === 'ios' && (
-                  <View style={styles.timePickerButtons}>
-                    <Button
-                      mode="outlined"
-                      onPress={() => setShowTimePicker(false)}
-                      style={styles.timePickerCancelButton}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      mode="contained"
-                      onPress={() => setShowTimePicker(false)}
-                      style={styles.timePickerConfirmButton}
-                    >
-                      Confirmar
-                    </Button>
-                  </View>
-                )}
-              </View>
-            )}
 
 
             {/* Lembrete */}
@@ -692,7 +813,6 @@ export default function EventsScreen() {
                 mode="outlined" 
                 onPress={() => {
                   setModalVisible(false);
-                  setShowTimePicker(false);
                 }}
                 style={styles.cancelButton}
                 icon="close"
@@ -744,310 +864,480 @@ export default function EventsScreen() {
           </View>
         </Modal>
       </Portal>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#f8f9fa',
-    paddingTop: 20
+    backgroundColor: '#f0f3f7',
   },
   header: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#5f27cd',
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12
+  },
+  headerGradient: {
     paddingTop: 50,
     paddingBottom: 30,
     paddingHorizontal: 20,
-    shadowColor: '#ff6b6b',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8
   },
-  scrollView: { 
-    
-    padding: 20
+  headerContent: {
+    gap: 15
   },
-  scrollContent: {
-    paddingBottom: 100,
-    flexGrow: 1 
+  headerTitleContainer: {
+    alignItems: 'center'
   },
   title: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    marginBottom: 8, 
+    fontSize: 36, 
+    fontWeight: '900', 
+    marginBottom: 6,
     textAlign: 'center',
-    color: 'white'
+    color: 'white',
+    letterSpacing: 0.5
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     color: 'white',
-    opacity: 0.9
+    opacity: 0.95,
+    fontWeight: '500'
+  },
+  scrollView: { 
+    flex: 1,
+    padding: 16
+  },
+  scrollContent: {
+    paddingBottom: 100,
+    flexGrow: 1 
+  },
+  calendarCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 2,
+    borderBottomColor: '#f0f3f7'
+  },
+  calendarTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#2c3e50'
+  },
+  selectedDateBadge: {
+    backgroundColor: '#5f27cd',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20
+  },
+  selectedDateBadgeText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 14
   },
   calendarContainer: { 
-    marginBottom: 20, 
-    backgroundColor: 'white', 
-    borderRadius: 12, 
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3
+    marginBottom: 15,
+    borderRadius: 16,
+    overflow: 'hidden'
   },
-  weather: { 
-    fontSize: 16, 
-    marginBottom: 20, 
-    textAlign: 'center', 
+  weatherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#f0f3f7',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 15
+  },
+  weatherIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15
+  },
+  weatherIcon: {
+    fontSize: 28
+  },
+  weatherInfo: {
+    flex: 1
+  },
+  weatherLabel: {
+    fontSize: 12,
+    color: '#7f8c8d',
     fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1
+  },
+  weatherText: {
+    fontSize: 16,
     color: '#2c3e50',
-    backgroundColor: '#4ecdc4',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    color: 'white'
+    fontWeight: '700'
+  },
+  eventsSection: {
+    marginTop: 10
+  },
+  eventsSectionHeader: {
+    marginBottom: 20,
+    backgroundColor: 'white',
+    padding: 18,
+    borderRadius: 16,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  eventsSectionTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#2c3e50',
+    marginBottom: 4
+  },
+  eventsSectionSubtitle: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    fontWeight: '600',
+    textTransform: 'capitalize'
   },
   eventCard: { 
-    marginBottom: 15,
-    borderRadius: 12,
+    marginBottom: 16,
+    borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
     backgroundColor: 'white',
-    borderLeftWidth: 4,
-    borderLeftColor: '#ff6b6b'
+    overflow: 'hidden'
+  },
+  eventCardAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 6
+  },
+  selectedEventCard: {
+    borderWidth: 3,
+    borderColor: '#5f27cd',
+    backgroundColor: '#f8f6ff'
   },
   eventContent: {
-    padding: 0
+    padding: 20
   },
   eventHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 15,
-    paddingHorizontal: 25,
-    paddingTop: 25,
-    paddingBottom: 10
+    marginBottom: 16
+  },
+  eventHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10
+  },
+  eventTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1
   },
   eventTitle: { 
     flex: 1,
     fontSize: 20,
     fontWeight: '800',
-    color: '#1a202c',
+    color: '#2c3e50',
     letterSpacing: 0.3
   },
+  importantStar: {
+    fontSize: 18,
+    marginLeft: 8
+  },
   priorityBadge: { 
-    paddingHorizontal: 14, 
-    paddingVertical: 8, 
-    borderRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 20,
+    minWidth: 70,
+    alignItems: 'center'
   },
   priorityText: { 
     color: 'white', 
-    fontSize: 12, 
-    fontWeight: 'bold',
-    letterSpacing: 0.8
+    fontSize: 11, 
+    fontWeight: '900',
+    letterSpacing: 1
   },
   eventInfo: {
-    paddingHorizontal: 25,
-    paddingBottom: 20
+    gap: 12
   },
-  eventDate: { 
-    color: '#4a5568', 
-    marginBottom: 15,
-    fontSize: 16,
-    fontWeight: '600',
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    textAlign: 'center'
-  },
-  eventDescription: {
-    color: '#2d3748',
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 12,
-    lineHeight: 22
-  },
-  eventLocation: {
-    color: '#718096',
-    fontSize: 14,
-    fontWeight: '500',
+  eventDateTimeRow: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 8
   },
-  eventWeather: {
-    color: '#718096',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 12
-  },
-  importantLabel: { 
-    color: '#f6ad55', 
-    fontWeight: 'bold', 
-    marginTop: 15,
-    fontSize: 15,
-    backgroundColor: 'rgba(246, 173, 85, 0.15)',
+  eventDateTimeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f3f7',
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingHorizontal: 15,
     borderRadius: 12,
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(246, 173, 85, 0.3)'
+    flex: 1
+  },
+  eventDateTimeIcon: {
+    fontSize: 18,
+    marginRight: 8
+  },
+  eventDateTimeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2c3e50'
+  },
+  eventDescription: {
+    color: '#5a6c7d',
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 22,
+    marginVertical: 4
+  },
+  eventDetailsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4
+  },
+  eventDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1
+  },
+  eventDetailIcon: {
+    fontSize: 16,
+    marginRight: 6
+  },
+  eventDetailText: {
+    fontSize: 13,
+    color: '#7f8c8d',
+    fontWeight: '600',
+    flex: 1
   },
   eventActions: {
-    paddingHorizontal: 25,
-    paddingBottom: 25,
-    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 0,
     gap: 10
   },
   editButton: {
     flex: 1,
-    backgroundColor: '#667eea',
-    borderRadius: 12,
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6
+    borderRadius: 16,
+    elevation: 0
   },
-  deleteButton: {
+  deleteEventButton: {
     flex: 1,
-    borderColor: '#e53e3e',
-    borderWidth: 2,
-    borderRadius: 12
+    borderRadius: 16,
+    elevation: 0
+  },
+  eventButtonLabel: {
+    fontWeight: '700',
+    fontSize: 15
+  },
+  checkboxButton: {
+    marginRight: 12,
+    minWidth: 40
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    marginTop: 20
   },
   emptyStateIcon: {
-    fontSize: 64,
+    fontSize: 80,
     marginBottom: 20
   },
   emptyStateText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4a5568',
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#2c3e50',
+    marginBottom: 12,
     textAlign: 'center'
   },
   emptyStateSubtext: {
     fontSize: 16,
-    color: '#718096',
+    color: '#7f8c8d',
     textAlign: 'center',
-    lineHeight: 24
+    lineHeight: 24,
+    fontWeight: '500'
   },
   fab: { 
     position: 'absolute', 
     margin: 20, 
     right: 0, 
     bottom: 0,
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#5f27cd',
     borderRadius: 30,
-    elevation: 12,
-    shadowColor: '#ff6b6b',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    elevation: 16,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16
+  },
+  headerActions: {
+    alignItems: 'center'
+  },
+  selectionButtonPrimary: {
+    borderRadius: 12,
+    paddingHorizontal: 8
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center'
+  },
+  selectionButtonSmall: {
+    borderRadius: 12,
+    minWidth: 80
+  },
+  deleteButtonHeader: {
+    elevation: 4
+  },
+  buttonLabelWhite: {
+    color: 'white',
+    fontWeight: '700'
   },
   modal: { 
     backgroundColor: 'white', 
-    margin: 20, 
-    borderRadius: 12, 
-    maxHeight: '90%',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8
+    margin: 16, 
+    borderRadius: 24, 
+    maxHeight: '92%',
+    elevation: 12,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20
   },
   modalContent: { 
-    padding: 20
+    padding: 24
   },
   modalTitle: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 20, 
+    fontSize: 28, 
+    fontWeight: '900', 
+    marginBottom: 24, 
     textAlign: 'center',
-    color: '#2c3e50'
+    color: '#5f27cd',
+    letterSpacing: 0.5
   },
   input: { 
-    marginBottom: 10,
-    backgroundColor: '#f8f9fa',
-    color: '#2c3e50',
-    borderRadius: 8
+    marginBottom: 12,
+    backgroundColor: '#f8f9fb',
+    borderRadius: 12,
+    fontSize: 16
   },
   inputFilled: {
-    backgroundColor: '#e8f4fd',
-    borderColor: '#3498db'
+    backgroundColor: '#f0f3f7',
+    borderWidth: 2,
+    borderColor: '#5f27cd'
   },
   errorText: { 
-    color: '#e53e3e', 
+    color: '#ff4757', 
     marginBottom: 12,
     fontSize: 13,
-    marginLeft: 8,
-    fontWeight: '500'
-  },
-  fieldLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#2d3748',
-    letterSpacing: 0.3
-  },
-  timeContainer: {
-    marginBottom: 15
-  },
-  timeButton: {
-    marginBottom: 8,
-    borderColor: '#3498db',
-    borderWidth: 2,
-    borderRadius: 8,
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa'
-  },
-  timeButtonFilled: {
-    backgroundColor: '#e8f4fd',
-    borderColor: '#3498db'
-  },
-  timeButtonLabel: {
-    fontSize: 16,
+    marginLeft: 12,
     fontWeight: '600'
   },
-  timeButtonLabelFilled: {
-    fontSize: 16,
-    color: '#667eea',
-    fontWeight: '700'
-  },
-  selectedTimeText: {
-    color: '#38a169',
-    fontSize: 15,
-    fontWeight: '600',
+  fieldLabel: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 12,
     marginTop: 8,
-    textAlign: 'center',
-    backgroundColor: 'rgba(56, 161, 105, 0.1)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10
+    color: '#2c3e50',
+    letterSpacing: 0.3
   },
-  timePicker: {
-    marginVertical: 15,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(102, 126, 234, 0.05)',
-    borderRadius: 15,
-    padding: 10
+  dateTimeContainer: {
+    marginBottom: 24,
+    backgroundColor: '#f8f9fb',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#e8ecf1'
+  },
+  selectedDateTimeText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#5f27cd',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(95, 39, 205, 0.1)',
+    borderRadius: 16,
+    letterSpacing: 0.5
+  },
+  manualTimeInputContainer: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 2,
+    borderTopColor: '#e8ecf1',
+    borderStyle: 'dashed'
+  },
+  manualTimeLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2c3e50',
+    marginBottom: 16,
+    textAlign: 'center'
+  },
+  manualTimeInputNative: {
+    backgroundColor: 'white',
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: '#5f27cd',
+    color: '#2c3e50',
+    marginBottom: 12,
+    shadowColor: '#5f27cd',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    letterSpacing: 2
+  },
+  manualTimeInputError: {
+    borderColor: '#ff4757',
+    backgroundColor: '#fff5f7'
+  },
+  manualTimeHint: {
+    fontSize: 13,
+    color: '#7f8c8d',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    fontWeight: '500'
   },
   pickerContainer: {
     marginBottom: 15
@@ -1092,24 +1382,24 @@ const styles = StyleSheet.create({
   },
   switchContainer: { 
     flexDirection: 'row', 
+    justifyContent: 'space-between',
     alignItems: 'center', 
-    marginBottom: 25,
-    paddingVertical: 15,
+    marginBottom: 24,
+    paddingVertical: 18,
     paddingHorizontal: 20,
-    backgroundColor: 'rgba(102, 126, 234, 0.05)',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(102, 126, 234, 0.1)'
+    backgroundColor: 'rgba(95, 39, 205, 0.08)',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(95, 39, 205, 0.15)'
   },
   switchLabel: { 
-    marginLeft: 15,
-    fontSize: 18,
-    color: '#2d3748',
-    fontWeight: '600'
+    fontSize: 17,
+    color: '#2c3e50',
+    fontWeight: '700'
   },
   switchLabelActive: {
-    color: '#667eea',
-    fontWeight: '700'
+    color: '#5f27cd',
+    fontWeight: '800'
   },
   importantNoteText: {
     color: '#f6ad55',
@@ -1140,88 +1430,60 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'white'
   },
-  timePickerContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3
-  },
-  timePickerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-    marginBottom: 15
-  },
-  timePickerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 15,
-    gap: 10
-  },
-  timePickerCancelButton: {
-    flex: 1,
-    borderColor: '#e74c3c'
-  },
-  timePickerConfirmButton: {
-    flex: 1,
-    backgroundColor: '#3498db'
-  },
   // Estilos para presets de horário
   timePresetsContainer: {
-    marginVertical: 15,
-    padding: 15,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef'
+    marginVertical: 20,
+    padding: 18,
+    backgroundColor: '#f8f9fb',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e8ecf1'
   },
   timePresetsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#2c3e50',
-    marginBottom: 10,
+    marginBottom: 14,
     textAlign: 'center'
   },
   timePresetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
     justifyContent: 'center'
   },
   timePresetButton: {
     margin: 2,
-    borderColor: '#3498db',
-    borderRadius: 20
+    borderColor: '#5f27cd',
+    borderWidth: 2,
+    borderRadius: 12,
+    backgroundColor: 'white'
   },
   // Estilos para lembretes
   reminderContainer: {
-    marginVertical: 15,
-    padding: 15,
-    backgroundColor: '#fff3cd',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ffeaa7'
+    marginVertical: 18,
+    padding: 18,
+    backgroundColor: '#fff9e6',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#ffe4a3'
   },
   reminderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8
+    marginTop: 10
   },
   reminderText: {
-    fontSize: 16,
-    color: '#856404',
-    fontWeight: '600'
+    fontSize: 17,
+    color: '#8b6914',
+    fontWeight: '700'
   },
   reminderButton: {
-    borderColor: '#f39c12',
-    borderRadius: 20
+    borderColor: '#ffa502',
+    borderWidth: 2,
+    borderRadius: 12,
+    backgroundColor: 'white'
   },
   // Estilos para modal de lembretes
   reminderModal: {
@@ -1268,41 +1530,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   reminderCancelButton: {
-    borderColor: '#e74c3c',
-    borderRadius: 20
-  },
-  // Estilos para header com ações
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  selectionActions: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap'
-  },
-  selectionButton: {
-    marginHorizontal: 2,
-    borderRadius: 20
-  },
-  deleteButton: {
-    backgroundColor: '#e74c3c'
-  },
-  // Estilos para seleção de eventos
-  selectedEventCard: {
+    borderColor: '#ff4757',
     borderWidth: 2,
-    borderColor: '#3498db',
-    backgroundColor: '#e8f4fd'
-  },
-  checkboxButton: {
-    marginRight: 8,
-    borderRadius: 20,
-    minWidth: 40
+    borderRadius: 16
   }
 });
 // ...existing code...
