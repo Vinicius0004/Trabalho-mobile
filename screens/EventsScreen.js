@@ -12,8 +12,9 @@ import * as yup from 'yup';
 import moment from 'moment';
 import axios from 'axios';
 import { MaskedTextInput } from 'react-native-mask-text';
-import { EventContext } from '../EventContext';
+import { EventContext } from '../contexts/EventContext';
 import { colors, typography, spacing, borderRadius, shadows } from '../styles/designSystem';
+import { ALERT_TYPE, Toast } from 'react-native-alert-notification';
 
 dayjs.locale('pt-br');
 
@@ -1362,20 +1363,32 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   buttonContainer: {
-    marginTop: 25,
-    gap: 15
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: spacing.lg,
+    marginTop: spacing.xl,
   },
   saveButton: {
-    paddingVertical: 12,
-    backgroundColor: '#27ae60',
-    borderRadius: 8
+    flex: 1,
+    backgroundColor: '#4caf50',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+    shadowColor: '#4caf50',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   cancelButton: {
-    paddingVertical: 12,
-    borderColor: '#e74c3c',
-    borderWidth: 2,
-    borderRadius: 8,
-    backgroundColor: 'white'
+    flex: 1,
+    backgroundColor: '#f44336',
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.md,
+    elevation: 6,
+    shadowColor: '#f44336',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
 
   timePresetsContainer: {

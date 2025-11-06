@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, Checkbox } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from 'react-native-ui-datepicker';
@@ -12,6 +12,7 @@ import moment from 'moment';
 import { TaskContext } from '../contexts/TaskContext';
 import ScrollLabel from '../components/ScrollLabel';
 import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
+import { ALERT_TYPE, Toast } from 'react-native-alert-notification';
 
 dayjs.locale('pt-br');
 
@@ -28,7 +29,10 @@ export default function TasksScreen() {
   const [editingTask, setEditingTask] = useState(null);
   const [dueDate, setDueDate] = useState(new Date());
   const [isCompleted, setIsCompleted] = useState(false);
-  const { tasks, addTask, updateTask, deleteTask, loadTasks } = useContext(TaskContext);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+
+  const { tasks, addTask, updateTask, deleteTask } = useContext(TaskContext);
 
   const sections = [
     { label: '✅ Tarefas', position: 0 },
@@ -61,8 +65,10 @@ export default function TasksScreen() {
 
       if (editingTask) {
         updateTask(taskData);
+        Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Atualizado', textBody: 'Tarefa atualizada com sucesso!' });
       } else {
         addTask(taskData);
+        Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Salvo', textBody: 'Tarefa criada com sucesso!' });
       }
 
       setModalVisible(false);
@@ -71,7 +77,7 @@ export default function TasksScreen() {
       setIsCompleted(false);
       setDueDate(new Date());
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao salvar tarefa');
+      Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Erro ao salvar tarefa' });
     }
   };
 
@@ -87,32 +93,21 @@ export default function TasksScreen() {
     setModalVisible(true);
   };
 
-  const handleDelete = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    const taskName = task ? task.title : 'esta tarefa';
-    
-    Alert.alert(
-      '🗑️ Confirmar Exclusão',
-      `Tem certeza que deseja excluir "${taskName}"?\n\nEsta ação não pode ser desfeita.`,
-      [
-        { 
-          text: '❌ Cancelar', 
-          style: 'cancel' 
-        },
-        { 
-          text: '🗑️ Excluir', 
-          style: 'destructive', 
-          onPress: () => {
-            try {
-              deleteTask(taskId);
-              Alert.alert('✅ Sucesso', 'Tarefa excluída com sucesso!');
-            } catch (error) {
-              Alert.alert('❌ Erro', 'Erro ao excluir tarefa. Tente novamente.');
-            }
-          }
-        }
-      ]
-    );
+  const handleDelete = (task) => {
+    setTaskToDelete(task);
+    setConfirmDeleteVisible(true);
+  };
+
+  const confirmDeleteTask = () => {
+    try {
+      deleteTask(taskToDelete.id);
+      Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Excluído', textBody: 'Tarefa excluída com sucesso!' });
+    } catch (error) {
+      Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Erro ao excluir tarefa. Tente novamente.' });
+    } finally {
+      setConfirmDeleteVisible(false);
+      setTaskToDelete(null);
+    }
   };
 
   const toggleTaskCompletion = (task) => {
@@ -211,7 +206,7 @@ export default function TasksScreen() {
               </Button>
               <Button 
                 mode="contained"
-                onPress={() => handleDelete(task.id)} 
+                onPress={() => handleDelete(task)} 
                 style={styles.deleteButton}
                 icon="delete"
                 labelStyle={styles.buttonLabel}
@@ -404,6 +399,9 @@ export default function TasksScreen() {
     </View>
   );
 }
+
+
+
 
 const styles = StyleSheet.create({
   container: {

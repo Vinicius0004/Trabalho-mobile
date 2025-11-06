@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
-import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, Chip } from 'react-native-paper';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, Chip, Dialog, PaperProvider } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from 'react-native-ui-datepicker';
 import dayjs from 'dayjs';
@@ -13,6 +13,7 @@ import moment from 'moment';
 import { ReminderContext } from '../contexts/ReminderContext';
 import ScrollLabel from '../components/ScrollLabel';
 import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
+import { ALERT_TYPE, Toast } from 'react-native-alert-notification';
 
 dayjs.locale('pt-br');
 
@@ -29,7 +30,14 @@ export default function RemindersScreen() {
   const [editingReminder, setEditingReminder] = useState(null);
   const [date, setDate] = useState(new Date());
   const [isActive, setIsActive] = useState(true);
+
   const { reminders, addReminder, updateReminder, deleteReminder, loadReminders } = useContext(ReminderContext);
+
+  // estados para confirmação de exclusão
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [deleteCandidateId, setDeleteCandidateId] = useState(null);
+  const [deleteCandidateTitle, setDeleteCandidateTitle] = useState('');
+
   const sections = [
     { label: '⏰ Lembretes', position: 0 },
     { label: '🔔 Ativos', position: 200 },
@@ -60,9 +68,19 @@ export default function RemindersScreen() {
       };
 
       if (editingReminder) {
-        updateReminder(reminderData);
+        await updateReminder(reminderData);
+        Toast.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: 'Lembrete Atualizado',
+          textBody: 'O lembrete foi atualizado com sucesso!',
+        });
       } else {
-        addReminder(reminderData);
+        await addReminder(reminderData);
+        Toast.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: 'Lembrete Criado',
+          textBody: 'Novo lembrete adicionado com sucesso!',
+        });
       }
 
       setModalVisible(false);
@@ -71,7 +89,12 @@ export default function RemindersScreen() {
       setIsActive(true);
       setDate(new Date());
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao salvar lembrete');
+      console.error('Erro onSubmit:', error);
+      Toast.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Erro',
+        textBody: 'Erro ao salvar lembrete. Tente novamente.',
+      });
     }
   };
 
@@ -87,32 +110,34 @@ export default function RemindersScreen() {
     setModalVisible(true);
   };
 
-  const handleDelete = (reminderId) => {
+  const promptDelete = (reminderId) => {
     const reminder = reminders.find(r => r.id === reminderId);
-    const reminderName = reminder ? reminder.title : 'este lembrete';
-    
-    Alert.alert(
-      '🗑️ Confirmar Exclusão',
-      `Tem certeza que deseja excluir "${reminderName}"?\n\nEsta ação não pode ser desfeita.`,
-      [
-        { 
-          text: '❌ Cancelar', 
-          style: 'cancel' 
-        },
-        { 
-          text: '🗑️ Excluir', 
-          style: 'destructive', 
-          onPress: () => {
-            try {
-              deleteReminder(reminderId);
-              Alert.alert('✅ Sucesso', 'Lembrete excluído com sucesso!');
-            } catch (error) {
-              Alert.alert('❌ Erro', 'Erro ao excluir lembrete. Tente novamente.');
-            }
-          }
-        }
-      ]
-    );
+    setDeleteCandidateId(reminderId);
+    setDeleteCandidateTitle(reminder ? reminder.title : 'este lembrete');
+    setConfirmVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteCandidateId) return;
+
+    try {
+      await deleteReminder(deleteCandidateId);
+      setConfirmVisible(false);
+      setDeleteCandidateId(null);
+      setDeleteCandidateTitle('');
+      Toast.show({
+        type: ALERT_TYPE.SUCCESS,
+        title: 'Lembrete Excluído',
+        textBody: 'O lembrete foi excluído com sucesso!',
+      });
+    } catch (error) {
+      console.error('Erro ao excluir lembrete:', error);
+      Toast.show({
+        type: ALERT_TYPE.DANGER,
+        title: 'Erro',
+        textBody: 'Erro ao excluir lembrete. Tente novamente.',
+      });
+    }
   };
 
   const toggleReminderStatus = (reminder) => {
@@ -140,27 +165,20 @@ export default function RemindersScreen() {
     }
   };
 
+  const activeReminders = reminders.filter(r => r.isActive);
+  const inactiveReminders = reminders.filter(r => !r.isActive);
+
   return (
     <View style={styles.container}>
       <Label />
       <ScrollView 
         style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
-        indicatorStyle="dark"
         contentContainerStyle={styles.scrollContent}
-        bounces={true}
-        alwaysBounceVertical={false}
-        keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled={true}
-        scrollEventThrottle={16}
-        removeClippedSubviews={false}
-        overScrollMode="always"
-        scrollIndicatorInsets={{ right: 1 }}
         onScroll={handleScroll}
       >
         <Text style={styles.title}>Lembretes</Text>
 
-        {reminders.map((reminder) => (
+        {[...activeReminders, ...inactiveReminders].map((reminder) => (
           <Card key={reminder.id} style={[styles.reminderCard, !reminder.isActive && styles.inactiveCard]}>
             <Card.Content>
               <View style={styles.reminderHeader}>
@@ -202,7 +220,7 @@ export default function RemindersScreen() {
               </Button>
               <Button 
                 mode="contained"
-                onPress={() => handleDelete(reminder.id)} 
+                onPress={() => promptDelete(reminder.id)} 
                 style={styles.deleteButton}
                 icon="delete"
                 labelStyle={styles.buttonLabel}
@@ -228,10 +246,23 @@ export default function RemindersScreen() {
       />
 
       <Portal>
+        {/* Modal de confirmação de exclusão */}
+        <Dialog visible={confirmVisible} onDismiss={() => setConfirmVisible(false)}>
+          <Dialog.Title>Excluir Lembrete</Dialog.Title>
+          <Dialog.Content>
+            <Paragraph>Tem certeza que deseja excluir "{deleteCandidateTitle}"?</Paragraph>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setConfirmVisible(false)}>Cancelar</Button>
+            <Button onPress={confirmDelete}>Excluir</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Modal de criação/edição */}
         <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text style={styles.modalTitle}>{editingReminder ? 'Editar Lembrete' : 'Novo Lembrete'}</Text>
-            
+
             <Controller
               control={control}
               name="title"
@@ -328,44 +359,17 @@ export default function RemindersScreen() {
                 mode="single"
                 date={date}
                 onChange={(params) => {
-                  if (params.date) {
-                    setDate(new Date(params.date));
-                  }
+                  if (params.date) setDate(new Date(params.date));
                 }}
                 locale="pt-br"
                 headerButtonColor={colors.primary}
                 selectedItemColor={colors.primary}
-                calendarTextStyle={{ 
-                  color: '#000000',
-                  fontSize: 16,
-                  fontWeight: '600'
-                }}
-                headerTextStyle={{ 
-                  color: colors.primary, 
-                  fontWeight: 'bold',
-                  fontSize: 18
-                }}
-                weekDaysTextStyle={{ 
-                  color: '#000000', 
-                  fontWeight: '700',
-                  fontSize: 14
-                }}
-                monthContainerStyle={{ backgroundColor: colors.surface }}
-                todayContainerStyle={{
-                  borderWidth: 1,
-                  borderColor: colors.primary
-                }}
-                todayTextStyle={{
-                  color: colors.primary,
-                  fontWeight: 'bold'
-                }}
                 height={320}
-                displayFullDays={true}
               />
             </View>
 
             <View style={styles.switchContainer}>
-              <Text style={styles.label}>Lembrete Ativo:</Text>
+              <Text style={styles.label}>Ativo:</Text>
               <Switch value={isActive} onValueChange={setIsActive} />
             </View>
 
@@ -373,7 +377,7 @@ export default function RemindersScreen() {
               <Button 
                 mode="contained" 
                 onPress={() => setModalVisible(false)} 
-                style={styles.cancelButton}
+                style={styles.Button}
                 icon="close"
                 labelStyle={styles.buttonLabel}
               >
@@ -382,7 +386,7 @@ export default function RemindersScreen() {
               <Button 
                 mode="contained" 
                 onPress={handleSubmit(onSubmit)} 
-                style={styles.saveButton}
+                style={styles.Button}
                 icon="check"
                 labelStyle={styles.buttonLabel}
               >
@@ -397,221 +401,37 @@ export default function RemindersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-    padding: spacing.lg,
-  },
-  scrollContent: {
-    paddingBottom: spacing['6xl'],
-    flexGrow: 1,
-  },
-  title: {
-    ...textStyles.h2,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  reminderCard: {
-    marginBottom: spacing.xl,
-    backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.xl,
-    ...shadows.lg,
-    padding: spacing.lg,
-    elevation: 8,
-  },
-  inactiveCard: {
-    opacity: 0.6,
-    backgroundColor: colors.surfaceVariant,
-  },
-  reminderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  reminderTitle: {
-    flex: 1,
-    ...textStyles.h4,
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  inactiveText: {
-    color: '#95a5a6',
-  },
-  reminderDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: spacing.md,
-  },
-  frequencyChip: {
-    alignSelf: 'flex-start',
-    borderRadius: borderRadius.lg,
-  },
-  chipText: {
-    color: '#FFFFFF',
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-  },
-  reminderTime: {
-    ...textStyles.caption,
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  reminderType: {
-    ...textStyles.caption,
-    color: '#2c3e50',
-    fontStyle: 'italic',
-    marginTop: spacing.sm,
-  },
-  fab: {
-    position: 'absolute',
-    margin: spacing.lg,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#5f27cd',
-    borderRadius: borderRadius.full,
-    elevation: 16,
-    shadowColor: '#5f27cd',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-  },
-  modal: {
-    backgroundColor: '#FFFFFF',
-    padding: spacing.xl,
-    margin: spacing.lg,
-    borderRadius: borderRadius.xl,
-    maxHeight: '92%',
-    elevation: 12,
-    shadowColor: '#5f27cd',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-  },
-  modalTitle: {
-    ...textStyles.h3,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  input: {
-    marginBottom: spacing.md,
-    backgroundColor: '#F9F9F9',
-    borderRadius: borderRadius.lg,
-  },
-  maskedInput: {
-    borderWidth: 2,
-    borderColor: '#CCCCCC',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    fontSize: typography.fontSize.xl,
-    marginBottom: spacing.md,
-    backgroundColor: '#F9F9F9',
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-    textAlign: 'center',
-  },
-  inputError: {
-    borderColor: '#ff4757',
-    backgroundColor: '#fff5f7',
-  },
-  errorText: {
-    color: '#ff4757',
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing.md,
-    fontWeight: typography.fontWeight.medium,
-    marginLeft: spacing.xs,
-  },
-  label: {
-    ...textStyles.label,
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  picker: {
-    borderWidth: 2,
-    borderColor: '#CCCCCC',
-    marginBottom: spacing.lg,
-    borderRadius: borderRadius.lg,
-    backgroundColor: '#F9F9F9',
-    color: '#000000',
-  },
-  dateContainer: {
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: '#F5F5F5',
-    borderRadius: borderRadius.lg,
-  },
-  selectedDate: {
-    fontSize: typography.fontSize.lg,
-    color: colors.primary,
-    textAlign: 'center',
-    fontWeight: typography.fontWeight.bold,
-    backgroundColor: colors.primaryLight + '30',
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: '#F5F5F5',
-    borderRadius: borderRadius.lg,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  cardActions: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    gap: spacing.lg,
-    marginTop: spacing.md,
-  },
-  editButton: {
-    flex: 1,
-    borderRadius: 16,
-    elevation: 0,
-    paddingVertical: 4,
-  },
-  deleteButton: {
-    flex: 1,
-    borderRadius: 16,
-    elevation: 0,
-    paddingVertical: 4,
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#00d2ff',
-    borderRadius: borderRadius.xl,
-    paddingVertical: spacing.md,
-    elevation: 6,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#757575',
-    borderRadius: borderRadius.xl,
-    paddingVertical: spacing.md,
-    elevation: 4,
-  },
-  buttonLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.bold,
-    letterSpacing: 0.5,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: spacing.md },
+  title: { ...typography.h1, marginBottom: spacing.md },
+  reminderCard: { marginBottom: spacing.md },
+  inactiveCard: { opacity: 0.6 },
+  reminderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reminderTitle: { ...typography.h3 },
+  inactiveText: { color: colors.textDisabled },
+  reminderDetails: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
+  frequencyChip: { paddingHorizontal: spacing.sm },
+  chipText: { color: colors.white },
+  reminderTime: { ...typography.body },
+  reminderType: { marginTop: spacing.xs },
+  cardActions: { justifyContent: 'flex-end' },
+  editButton: { marginRight: spacing.sm },
+  deleteButton: { backgroundColor: colors.danger },
+  fab: { position: 'absolute', margin: spacing.md, right: 0, bottom: 0 },
+  modal: { backgroundColor: colors.surface, margin: spacing.md, borderRadius: borderRadius.md, padding: spacing.md, maxHeight: '90%' },
+  modalTitle: { ...typography.h2, marginBottom: spacing.md },
+  input: { marginBottom: spacing.sm },
+  maskedInput: { borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, padding: spacing.sm, marginBottom: spacing.sm },
+  inputError: { borderColor: colors.danger },
+  errorText: { color: colors.danger, marginBottom: spacing.sm },
+  label: { ...typography.body, marginBottom: spacing.xs },
+  picker: { marginBottom: spacing.sm, backgroundColor: colors.surface },
+  dateContainer: { marginVertical: spacing.sm },
+  selectedDate: { marginBottom: spacing.sm, ...typography.body },
+  switchContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  submitButton: { marginTop: spacing.md },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-around', marginTop: spacing.xl },
+  Button: { flex: 1, marginHorizontal: spacing.sm },
+  errorText: { color: '#f44336', marginBottom: spacing.md },
 });
-

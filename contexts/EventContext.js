@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import storage from './utils/storage';
+import storage from '../utils/storage';
 
 export const EventContext = createContext();
 
@@ -81,4 +81,3 @@ export function EventProvider({ children }) {
     </EventContext.Provider>
   );
 }
-

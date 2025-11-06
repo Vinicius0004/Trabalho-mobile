@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import storage from '../utils/storage';
+import { ALERT_TYPE, Toast } from 'react-native-alert-notification';
 
 export const TaskContext = createContext();
 
@@ -12,7 +13,7 @@ export function TaskProvider({ children }) {
       console.log('🔄 Carregando tarefas do Storage...');
       const storedTasks = await storage.getItem('tasks');
       console.log('📦 Dados recuperados:', storedTasks);
-      
+
       if (storedTasks && storedTasks !== 'null' && storedTasks !== '[]') {
         const parsedTasks = JSON.parse(storedTasks);
         console.log('✅ Tarefas carregadas:', parsedTasks.length, 'itens');
@@ -24,6 +25,7 @@ export function TaskProvider({ children }) {
       setIsLoaded(true);
     } catch (error) {
       console.error('❌ Erro ao carregar tarefas:', error);
+      Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Falha ao carregar tarefas.' });
       setIsLoaded(true);
     }
   };
@@ -36,9 +38,11 @@ export function TaskProvider({ children }) {
         console.log('✅ Tarefas salvas com sucesso!');
       } else {
         console.log('⚠️ Falha ao salvar tarefas');
+        Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Falha ao salvar tarefas.' });
       }
     } catch (error) {
       console.error('❌ Erro ao salvar tarefas:', error);
+      Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Erro ao salvar tarefas.' });
     }
   };
 
@@ -46,6 +50,7 @@ export function TaskProvider({ children }) {
     const newTasks = [...tasks, { ...task, id: task.id || Date.now().toString() }];
     setTasks(newTasks);
     await saveTasks(newTasks);
+    Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Salvo', textBody: 'Tarefa adicionada com sucesso!' });
   };
 
   const updateTask = async (updatedTask) => {
@@ -54,6 +59,7 @@ export function TaskProvider({ children }) {
     );
     setTasks(newTasks);
     await saveTasks(newTasks);
+    Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Atualizado', textBody: 'Tarefa atualizada com sucesso!' });
   };
 
   const deleteTask = async (taskId) => {
@@ -62,6 +68,7 @@ export function TaskProvider({ children }) {
     console.log('📝 Novas tarefas após exclusão:', newTasks.length, 'itens');
     setTasks(newTasks);
     await saveTasks(newTasks);
+    Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Excluído', textBody: 'Tarefa excluída com sucesso!' });
   };
 
   useEffect(() => {
@@ -81,4 +88,3 @@ export function TaskProvider({ children }) {
     </TaskContext.Provider>
   );
 }
-

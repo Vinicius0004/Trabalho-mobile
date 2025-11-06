@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { Card, Title, Paragraph } from 'react-native-paper';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import moment from 'moment';
-import { EventContext } from '../EventContext';
+import { EventContext } from '../contexts/EventContext';
 import { ContactContext } from '../contexts/ContactContext';
 import { TaskContext } from '../contexts/TaskContext';
 import { ReminderContext } from '../contexts/ReminderContext';
@@ -384,4 +384,3 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
   },
 });
-

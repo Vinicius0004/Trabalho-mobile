@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, RadioButton } from 'react-native-paper';
-import { Picker } from '@react-native-picker/picker';
+import { TextInput, Button, Card, Title, Paragraph, Switch, Portal, Modal, FAB, RadioButton, Dialog } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -9,6 +8,7 @@ import { MaskedTextInput } from 'react-native-mask-text';
 import { ContactContext } from '../contexts/ContactContext';
 import ScrollLabel from '../components/ScrollLabel';
 import { colors, typography, spacing, borderRadius, shadows, textStyles } from '../styles/designSystem';
+import { ALERT_TYPE, Toast } from 'react-native-alert-notification';
 
 const schema = yup.object().shape({
   name: yup.string().required('Nome é obrigatório').min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -22,7 +22,11 @@ export default function ContactsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
-  const { contacts, addContact, updateContact, deleteContact, loadContacts } = useContext(ContactContext);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [deleteCandidateId, setDeleteCandidateId] = useState(null);
+  const [deleteCandidateName, setDeleteCandidateName] = useState('');
+  const { contacts, addContact, updateContact, deleteContact } = useContext(ContactContext);
+
   const sections = [
     { label: '👥 Contatos', position: 0 },
     { label: '⭐ Favoritos', position: 200 },
@@ -51,9 +55,11 @@ export default function ContactsScreen() {
       };
 
       if (editingContact) {
-        updateContact(contactData);
+        await updateContact(contactData);
+        Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Contato Atualizado', textBody: 'Contato atualizado com sucesso!' });
       } else {
-        addContact(contactData);
+        await addContact(contactData);
+        Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Contato Criado', textBody: 'Novo contato adicionado com sucesso!' });
       }
 
       setModalVisible(false);
@@ -61,7 +67,8 @@ export default function ContactsScreen() {
       setEditingContact(null);
       setIsFavorite(false);
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao salvar contato');
+      console.error('Erro onSubmit:', error);
+      Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Erro ao salvar contato. Tente novamente.' });
     }
   };
 
@@ -76,32 +83,28 @@ export default function ContactsScreen() {
     setModalVisible(true);
   };
 
-  const handleDelete = (contactId) => {
+  // abre o diálogo de confirmação
+  const promptDelete = (contactId) => {
     const contact = contacts.find(c => c.id === contactId);
-    const contactName = contact ? contact.name : 'este contato';
-    
-    Alert.alert(
-      '🗑️ Confirmar Exclusão',
-      `Tem certeza que deseja excluir "${contactName}"?\n\nEsta ação não pode ser desfeita.`,
-      [
-        { 
-          text: '❌ Cancelar', 
-          style: 'cancel' 
-        },
-        { 
-          text: '🗑️ Excluir', 
-          style: 'destructive', 
-          onPress: () => {
-            try {
-              deleteContact(contactId);
-              Alert.alert('✅ Sucesso', 'Contato excluído com sucesso!');
-            } catch (error) {
-              Alert.alert('❌ Erro', 'Erro ao excluir contato. Tente novamente.');
-            }
-          }
-        }
-      ]
-    );
+    setDeleteCandidateId(contactId);
+    setDeleteCandidateName(contact ? contact.name : 'este contato');
+    setConfirmVisible(true);
+  };
+
+  // executa a exclusão após confirmação
+  const confirmDelete = async () => {
+    if (!deleteCandidateId) return;
+
+    try {
+      await deleteContact(deleteCandidateId);
+      setConfirmVisible(false);
+      setDeleteCandidateId(null);
+      setDeleteCandidateName('');
+      Toast.show({ type: ALERT_TYPE.SUCCESS, title: 'Contato Excluído', textBody: 'O contato foi excluído com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao excluir contato:', error);
+      Toast.show({ type: ALERT_TYPE.DANGER, title: 'Erro', textBody: 'Erro ao excluir contato. Tente novamente.' });
+    }
   };
 
   const getCategoryColor = (category) => {
@@ -117,19 +120,10 @@ export default function ContactsScreen() {
   return (
     <View style={styles.container}>
       <Label />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={true}
-        indicatorStyle="dark"
         contentContainerStyle={styles.scrollContent}
-        bounces={true}
-        alwaysBounceVertical={false}
-        keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled={true}
-        scrollEventThrottle={16}
-        removeClippedSubviews={false}
-        overScrollMode="always"
-        scrollIndicatorInsets={{ right: 1 }}
         onScroll={handleScroll}
       >
         <Text style={styles.title}>Contatos</Text>
@@ -162,26 +156,8 @@ export default function ContactsScreen() {
               </View>
             </Card.Content>
             <Card.Actions style={styles.cardActions}>
-              <Button 
-                mode="contained"
-                onPress={() => handleEdit(contact)} 
-                style={styles.editButton}
-                icon="pencil"
-                labelStyle={styles.buttonLabel}
-                buttonColor="#5f27cd"
-              >
-                Editar
-              </Button>
-              <Button 
-                mode="contained"
-                onPress={() => handleDelete(contact.id)} 
-                style={styles.deleteButton}
-                icon="delete"
-                labelStyle={styles.buttonLabel}
-                buttonColor="#ff4757"
-              >
-                Excluir
-              </Button>
+              <Button mode="contained" onPress={() => handleEdit(contact)} style={styles.editButton} icon="pencil">Editar</Button>
+              <Button mode="contained" onPress={() => promptDelete(contact.id)} style={styles.deleteButton} icon="delete">Excluir</Button>
             </Card.Actions>
           </Card>
         ))}
@@ -200,6 +176,19 @@ export default function ContactsScreen() {
       />
 
       <Portal>
+        {/* Dialog de confirmação de exclusão */}
+        <Dialog visible={confirmVisible} onDismiss={() => setConfirmVisible(false)}>
+          <Dialog.Title>Excluir Contato</Dialog.Title>
+          <Dialog.Content>
+            <Paragraph>Tem certeza que deseja excluir "{deleteCandidateName}"?</Paragraph>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setConfirmVisible(false)}>Cancelar</Button>
+            <Button onPress={confirmDelete}>Excluir</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Modal de criação/edição */}
         <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text style={styles.modalTitle}>{editingContact ? 'Editar Contato' : 'Novo Contato'}</Text>
@@ -211,7 +200,7 @@ export default function ContactsScreen() {
                 <TextInput
                   label="Nome completo"
                   value={value}
-                  textColor="#000000"
+                  textColor="#000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.name}
@@ -245,7 +234,7 @@ export default function ContactsScreen() {
                 <TextInput
                   label="Email"
                   value={value}
-                  textColor="#000000"
+                  textColor="#000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.email}
@@ -263,7 +252,7 @@ export default function ContactsScreen() {
                 <TextInput
                   label="Endereço"
                   value={value}
-                  textColor="#000000"
+                  textColor="#000"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   error={!!errors.address}
@@ -312,214 +301,36 @@ export default function ContactsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-    padding: spacing.lg,
-  },
-  scrollContent: {
-    paddingBottom: spacing['6xl'],
-    flexGrow: 1,
-  },
-  title: {
-    ...textStyles.h2,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  contactCard: {
-    marginBottom: spacing.xl,
-    backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.xl,
-    ...shadows.lg,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  cardContent: {
-    padding: spacing.lg,
-  },
-  contactHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  contactTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  contactTitle: {
-    flex: 1,
-    ...textStyles.h4,
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  favoriteIcon: {
-    fontSize: 20,
-    marginLeft: spacing.sm,
-  },
-  contactInfoContainer: {
-    backgroundColor: '#f8f9fb',
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  contactInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  lastInfoRow: {
-    marginBottom: 0,
-  },
-  contactInfoIcon: {
-    fontSize: 18,
-    marginRight: spacing.sm,
-    width: 24,
-  },
-  contactInfo: {
-    color: '#2c3e50',
-    fontSize: typography.fontSize.base,
-    marginBottom: 0,
-    lineHeight: 24,
-    flex: 1,
-    fontWeight: typography.fontWeight.medium,
-  },
-  categoryBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    ...shadows.sm,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  categoryText: {
-    color: '#FFFFFF',
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  fab: {
-    position: 'absolute',
-    margin: spacing.lg,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#5f27cd',
-    borderRadius: borderRadius.full,
-    elevation: 16,
-    shadowColor: '#5f27cd',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-  },
-  modal: {
-    backgroundColor: '#FFFFFF',
-    padding: spacing.xl,
-    margin: spacing.lg,
-    borderRadius: borderRadius.xl,
-    maxHeight: '92%',
-    elevation: 12,
-    shadowColor: '#5f27cd',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-  },
-  modalTitle: {
-    ...textStyles.h3,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  input: {
-    marginBottom: spacing.md,
-    backgroundColor: '#F9F9F9',
-    borderRadius: borderRadius.lg,
-  },
-  maskedInput: {
-    borderWidth: 2,
-    borderColor: '#CCCCCC',
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    fontSize: typography.fontSize.lg,
-    marginBottom: spacing.md,
-    backgroundColor: '#F9F9F9',
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-    textAlign: 'center',
-  },
-  inputError: {
-    borderColor: '#ff4757',
-    backgroundColor: '#fff5f7',
-  },
-  errorText: {
-    color: '#ff4757',
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing.md,
-    fontWeight: typography.fontWeight.medium,
-    marginLeft: spacing.xs,
-  },
-  label: {
-    ...textStyles.label,
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
-    color: '#000000',
-    fontWeight: typography.fontWeight.bold,
-  },
-  radioContainer: {
-    marginBottom: spacing.lg,
-    backgroundColor: '#F5F5F5',
-    borderRadius: borderRadius.lg,
-    padding: spacing.sm,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: '#F5F5F5',
-    borderRadius: borderRadius.lg,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  button: {
-    flex: 1,
-    borderRadius: borderRadius.xl,
-    paddingVertical: spacing.md,
-  },
-  cardActions: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    gap: spacing.lg,
-    marginTop: spacing.md,
-  },
-  editButton: {
-    flex: 1,
-    borderRadius: 16,
-    elevation: 0,
-    paddingVertical: 4,
-  },
-  deleteButton: {
-    flex: 1,
-    borderRadius: 16,
-    elevation: 0,
-    paddingVertical: 4,
-  },
-  buttonLabel: {
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  container: { flex: 1, backgroundColor: '#FFF' },
+  scrollView: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.lg },
+  scrollContent: { paddingBottom: spacing['6xl'], flexGrow: 1 },
+  title: { ...textStyles.h2, textAlign: 'center', marginBottom: spacing.xl, color: '#000', fontWeight: typography.fontWeight.bold },
+  contactCard: { margin: spacing.md, borderRadius: borderRadius.xl, backgroundColor: '#FFF', elevation: 5 },
+  cardContent: { paddingBottom: 0 },
+  contactHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  contactTitleContainer: { flexDirection: 'row', alignItems: 'center' },
+  contactTitle: { ...textStyles.h4, fontWeight: typography.fontWeight.bold },
+  favoriteIcon: { marginLeft: spacing.sm, fontSize: 18 },
+  categoryBadge: { borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  categoryText: { color: '#FFF', fontWeight: typography.fontWeight.bold },
+  contactInfoContainer: { marginBottom: spacing.sm },
+  contactInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
+  lastInfoRow: { marginBottom: 0 },
+  contactInfoIcon: { marginRight: spacing.sm },
+  contactInfo: { color: '#000' },
+  cardActions: { justifyContent: 'space-between' },
+  editButton: { flex: 1, backgroundColor: '#667eea', marginRight: spacing.sm },
+  deleteButton: { flex: 1, backgroundColor: '#f44336', marginLeft: spacing.sm },
+  fab: { position: 'absolute', right: spacing.lg, bottom: spacing.lg, backgroundColor: '#667eea' },
+  modal: { backgroundColor: '#FFF', padding: spacing.xl, borderRadius: borderRadius.xl, margin: spacing.md },
+  modalTitle: { ...textStyles.h3, textAlign: 'center', marginBottom: spacing.xl, color: '#000' },
+  input: { marginBottom: spacing.md, backgroundColor: '#F9F9F9' },
+  maskedInput: { marginBottom: spacing.md, backgroundColor: '#F9F9F9', padding: spacing.md, borderRadius: borderRadius.md, color: '#000' },
+  inputError: { borderColor: '#f44336', borderWidth: 1 },
+  label: { ...textStyles.label, color: '#000', fontWeight: typography.fontWeight.bold, marginBottom: spacing.md },
+  radioContainer: { marginBottom: spacing.md },
+  switchContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-around', marginTop: spacing.xl },
+  button: { flex: 1, marginHorizontal: spacing.sm },
+  errorText: { color: '#f44336', marginBottom: spacing.md },
 });
-

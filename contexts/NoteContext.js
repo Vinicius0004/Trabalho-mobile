@@ -12,7 +12,7 @@ export function NoteProvider({ children }) {
       console.log('🔄 Carregando notas do Storage...');
       const storedNotes = await storage.getItem('notes');
       console.log('📦 Dados recuperados:', storedNotes);
-      
+
       if (storedNotes && storedNotes !== 'null' && storedNotes !== '[]') {
         const parsedNotes = JSON.parse(storedNotes);
         console.log('✅ Notas carregadas:', parsedNotes.length, 'itens');
@@ -30,12 +30,12 @@ export function NoteProvider({ children }) {
 
   const saveNotes = async (newNotes) => {
     try {
-      console.log('💾 Salvando notas:', newNotes.length, 'itens');
+      console.log('💾 Salvando notas:', Array.isArray(newNotes) ? newNotes.length : '??', 'itens');
       const success = await storage.setItem('notes', JSON.stringify(newNotes));
       if (success) {
         console.log('✅ Notas salvas com sucesso!');
       } else {
-        console.log('⚠️ Falha ao salvar notas');
+        console.log('⚠️ Falha ao salvar notas (storage retornou falsy)');
       }
     } catch (error) {
       console.error('❌ Erro ao salvar notas:', error);
@@ -49,19 +49,35 @@ export function NoteProvider({ children }) {
   };
 
   const updateNote = async (updatedNote) => {
-    const newNotes = notes.map(note => 
-      note.id === updatedNote.id ? updatedNote : note
+    const newNotes = notes.map(note =>
+      note.id && updatedNote.id && note.id.toString() === updatedNote.id.toString()
+        ? updatedNote
+        : note
     );
     setNotes(newNotes);
     await saveNotes(newNotes);
   };
 
   const deleteNote = async (noteId) => {
-    console.log('🗑️ Excluindo nota:', noteId);
-    const newNotes = notes.filter(note => note.id !== noteId);
-    console.log('📝 Novas notas após exclusão:', newNotes.length, 'itens');
-    setNotes(newNotes);
-    await saveNotes(newNotes);
+    try {
+      console.log('🗑️ deleteNote chamado com id:', noteId);
+      const normalizedId = noteId != null ? noteId.toString() : null;
+
+      const newNotes = notes.filter(note => {
+        const nid = note && note.id != null ? note.id.toString() : '';
+        return nid !== normalizedId;
+      });
+
+      console.log('📝 Novas notas após filtro:', newNotes.length, 'itens - ids:', newNotes.map(n => n.id));
+      setNotes(newNotes);
+
+      // Aguarda salvar e confere retorno
+      await saveNotes(newNotes);
+      console.log('✅ deleteNote: notas salvas após exclusão.');
+    } catch (error) {
+      console.error('❌ Erro em deleteNote:', error);
+      throw error;
+    }
   };
 
   useEffect(() => {
@@ -70,15 +86,14 @@ export function NoteProvider({ children }) {
   }, []);
 
   return (
-    <NoteContext.Provider value={{ 
-      notes, 
-      addNote, 
-      updateNote, 
-      deleteNote, 
-      loadNotes 
+    <NoteContext.Provider value={{
+      notes,
+      addNote,
+      updateNote,
+      deleteNote,
+      loadNotes,
     }}>
       {children}
     </NoteContext.Provider>
   );
 }
-
