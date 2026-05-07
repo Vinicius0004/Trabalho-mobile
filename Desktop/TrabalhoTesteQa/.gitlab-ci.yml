@@ -1,0 +1,22 @@
+stages:
+  - Acceptance Tests
+
+Acceptance_Tests:
+  stage: Acceptance Tests
+  image: python:3.13
+  services:
+    - name: selenium/standalone-chrome:latest
+      alias: selenium
+  variables:
+    REMOTE_URL: http://selenium:4444/wd/hub
+    RUN_TESTS: Cadastrar_Entregas
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - robot -d logs -i $RUN_TESTS tests
+  artifacts:
+    when: always
+    paths:
+      - logs/
+    expire_in: 1 week
