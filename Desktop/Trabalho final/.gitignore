@@ -1,0 +1,18 @@
+# Ambiente Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Relatórios do Robot Framework
+logs/*
+!logs/.gitkeep
+output.xml
+log.html
+report.html
+
+# Editor e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

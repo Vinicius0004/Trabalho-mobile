@@ -1,0 +1,16 @@
+stages:
+  - test
+
+robot_tests:
+  image: python:3.11
+  stage: test
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - python -m robot -d logs tests/
+  artifacts:
+    when: always
+    paths:
+      - logs/
+    expire_in: 7 days
